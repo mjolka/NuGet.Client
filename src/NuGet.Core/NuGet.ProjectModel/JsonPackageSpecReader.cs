@@ -409,7 +409,7 @@ namespace NuGet.ProjectModel
                                     values = jsonReader.ReadDelimitedString();
                                     dependencyTypeValue = LibraryDependencyType.Parse(values);
 
-                                    // Types are used at pack time, they should be translated to suppressParent to 
+                                    // Types are used at pack time, they should be translated to suppressParent to
                                     // provide a matching effect for project to project references.
                                     // This should be set before suppressParent is checked.
                                     if (!dependencyTypeValue.Contains(LibraryDependencyTypeFlag.BecomesNupkgDependency))
@@ -902,6 +902,7 @@ namespace NuGet.ProjectModel
         private static void ReadMSBuildMetadata(JsonTextReader jsonReader, PackageSpec packageSpec)
         {
             var centralPackageVersionsManagementEnabled = false;
+            var transitiveDependencyPinningEnabled = false;
             List<string> configFilePaths = null;
             var crossTargeting = false;
             List<string> fallbackFolders = null;
@@ -930,6 +931,10 @@ namespace NuGet.ProjectModel
                 {
                     case "centralPackageVersionsManagementEnabled":
                         centralPackageVersionsManagementEnabled = ReadNextTokenAsBoolOrFalse(jsonReader, packageSpec.FilePath);
+                        break;
+
+                    case "transitiveDependencyPinningEnabled":
+                        transitiveDependencyPinningEnabled = ReadNextTokenAsBoolOrFalse(jsonReader, packageSpec.FilePath);
                         break;
 
                     case "configFilePaths":
@@ -1087,6 +1092,7 @@ namespace NuGet.ProjectModel
             }
 
             msbuildMetadata.CentralPackageVersionsEnabled = centralPackageVersionsManagementEnabled;
+            msbuildMetadata.TransitiveDependencyPinningEnabled = transitiveDependencyPinningEnabled;
 
             if (configFilePaths != null)
             {

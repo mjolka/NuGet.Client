@@ -152,7 +152,7 @@ namespace NuGet.Commands
 
             PackageSpec result = null;
 
-            // There should only be one ProjectSpec per project in the item set, 
+            // There should only be one ProjectSpec per project in the item set,
             // but if multiple do appear take only the first one in an effort
             // to handle this gracefully.
             var specItem = GetItemByType(items, "projectSpec").FirstOrDefault();
@@ -161,6 +161,7 @@ namespace NuGet.Commands
             {
                 ProjectStyle restoreType = GetProjectStyle(specItem);
                 bool isCpvmEnabled = IsCentralVersionsManagementEnabled(specItem, restoreType);
+                bool isTransitiveDependencyPinningEnabled = IsTransitiveDependencyPinningEnabled(specItem, restoreType);
 
                 // Get base spec
                 if (restoreType == ProjectStyle.ProjectJson)
@@ -198,7 +199,7 @@ namespace NuGet.Commands
 
                     foreach (var source in MSBuildStringUtility.Split(specItem.GetProperty("Sources")))
                     {
-                        // Fix slashes incorrectly removed by MSBuild 
+                        // Fix slashes incorrectly removed by MSBuild
                         var pkgSource = new PackageSource(FixSourcePath(source));
                         result.RestoreMetadata.Sources.Add(pkgSource);
                     }
@@ -291,6 +292,7 @@ namespace NuGet.Commands
                 }
 
                 result.RestoreMetadata.CentralPackageVersionsEnabled = isCpvmEnabled;
+                result.RestoreMetadata.TransitiveDependencyPinningEnabled = isTransitiveDependencyPinningEnabled;
             }
 
             return result;
@@ -885,7 +887,7 @@ namespace NuGet.Commands
         }
 
         /// <summary>
-        /// Convert http:/url to http://url 
+        /// Convert http:/url to http://url
         /// If not needed the same path is returned. This is to work around
         /// issues with msbuild dropping slashes from paths on linux and osx.
         /// </summary>
@@ -1016,6 +1018,11 @@ namespace NuGet.Commands
         internal static bool IsCentralVersionsManagementEnabled(IMSBuildItem projectSpecItem, ProjectStyle projectStyle)
         {
             return IsPropertyTrue(projectSpecItem, "_CentralPackageVersionsEnabled") && projectStyle == ProjectStyle.PackageReference;
+        }
+
+        internal static bool IsTransitiveDependencyPinningEnabled(IMSBuildItem projectSpecItem, ProjectStyle projectStyle)
+        {
+            return IsPropertyTrue(projectSpecItem, "_TransitiveDependencyPinningEnabled") && projectStyle == ProjectStyle.PackageReference;
         }
 
         private static void AddCentralPackageVersions(PackageSpec spec, IEnumerable<IMSBuildItem> items)

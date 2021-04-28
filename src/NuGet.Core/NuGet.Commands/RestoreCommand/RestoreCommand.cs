@@ -72,6 +72,7 @@ namespace NuGet.Commands
 
         // names for central package management version information
         private const string IsCentralVersionManagementEnabled = "IsCentralVersionManagementEnabled";
+        private const string IsTransitiveDependencyPinningEnabled = "IsTransitiveDependencyPinningEnabled";
 
         public RestoreCommand(RestoreRequest request)
         {
@@ -114,6 +115,10 @@ namespace NuGet.Commands
 
                 var isCpvmEnabled = _request.Project.RestoreMetadata?.CentralPackageVersionsEnabled ?? false;
                 telemetry.TelemetryEvent[IsCentralVersionManagementEnabled] = isCpvmEnabled;
+
+                var isTransitiveDependencyPinningEnabled = _request.Project.RestoreMetadata?.TransitiveDependencyPinningEnabled ?? false;
+                telemetry.TelemetryEvent[IsTransitiveDependencyPinningEnabled] = isTransitiveDependencyPinningEnabled;
+
                 if (isCpvmEnabled)
                 {
                     _logger.LogMinimal(string.Format(

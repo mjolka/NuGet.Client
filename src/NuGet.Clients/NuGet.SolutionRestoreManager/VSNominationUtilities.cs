@@ -61,7 +61,7 @@ namespace NuGet.SolutionRestoreManager
 
         #region IVSTargetFrameworksAPIs
         /**********************************************************************
-         * IVSTargetFrameworks based APIs                                     * 
+         * IVSTargetFrameworks based APIs                                     *
          **********************************************************************/
 
         internal static RuntimeGraph GetRuntimeGraph(IEnumerable targetFrameworks)
@@ -279,11 +279,16 @@ namespace NuGet.SolutionRestoreManager
 
         /// <summary>
         /// Evaluates the msbuild properties and returns the value of the ManagePackageVersionsCentrally property.
-        /// If it is not defined the default value will be disabled. 
+        /// If it is not defined the default value will be disabled.
         /// </summary>
         internal static bool IsCentralPackageVersionManagementEnabled(IEnumerable tfms)
         {
             return GetSingleNonEvaluatedPropertyOrNull(tfms, ProjectBuildProperties.ManagePackageVersionsCentrally, MSBuildStringUtility.IsTrue);
+        }
+
+        internal static bool IsTransitiveDependencyPinningEnabled(IEnumerable tfms)
+        {
+            return GetSingleNonEvaluatedPropertyOrNull(tfms, ProjectBuildProperties.EnableTransitiveDependencyPinning, MSBuildStringUtility.IsTrue);
         }
 
         private static NuGetFramework GetToolFramework(IEnumerable targetFrameworks)

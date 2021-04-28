@@ -109,7 +109,7 @@ namespace NuGet.SolutionRestoreManager
         }
 
         /// <summary>
-        /// This is where the nominate calls for the IVs1 and IVS3 APIs combine. The reason for this method is to avoid duplication and potential issues 
+        /// This is where the nominate calls for the IVs1 and IVS3 APIs combine. The reason for this method is to avoid duplication and potential issues
         /// The issue with this method is that it has some weird custom logging to ensure backward compatibility. It's on the implementer to ensure these calls are correct.
         /// <param name="projectUniqueName">projectUniqueName</param>
         /// <param name="projectRestoreInfo">projectRestoreInfo. Can be null</param>
@@ -231,6 +231,7 @@ namespace NuGet.SolutionRestoreManager
         internal static PackageSpec ToPackageSpec(ProjectNames projectNames, IEnumerable TargetFrameworks, string originalTargetFrameworkstr, string msbuildProjectExtensionsPath)
         {
             var cpvmEnabled = VSNominationUtilities.IsCentralPackageVersionManagementEnabled(TargetFrameworks);
+            var transitiveDependencyPinningEnabled = VSNominationUtilities.IsTransitiveDependencyPinningEnabled(TargetFrameworks);
 
             var tfis = TargetFrameworks
                 .Cast<IVsTargetFrameworkInfo>()
@@ -289,6 +290,7 @@ namespace NuGet.SolutionRestoreManager
                     CacheFilePath = NoOpRestoreUtilities.GetProjectCacheFilePath(cacheRoot: outputPath),
                     RestoreLockProperties = VSNominationUtilities.GetRestoreLockProperties(TargetFrameworks),
                     CentralPackageVersionsEnabled = cpvmEnabled,
+                    TransitiveDependencyPinningEnabled = transitiveDependencyPinningEnabled,
                 },
                 RuntimeGraph = VSNominationUtilities.GetRuntimeGraph(TargetFrameworks),
                 RestoreSettings = new ProjectRestoreSettings() { HideWarningsAndErrors = true }

@@ -769,6 +769,7 @@ namespace NuGet.Build.Tasks.Console
 
             var projectStyleOrNull = BuildTasksUtility.GetProjectRestoreStyleFromProjectProperty(project.GetProperty("RestoreProjectStyle"));
             var isCpvmEnabled = IsCentralVersionsManagementEnabled(project, projectStyleOrNull);
+            var isTransitiveDependencyPinningEnabled = IsTransitiveDependencyPinningEnabled(project, projectStyleOrNull);
             var targetFrameworkInfos = GetTargetFrameworkInfos(projectsByTargetFramework, isCpvmEnabled);
 
             var projectStyleResult = BuildTasksUtility.GetProjectRestoreStyle(
@@ -810,7 +811,8 @@ namespace NuGet.Build.Tasks.Console
                         settings),
                     SkipContentFileWrite = IsLegacyProject(project),
                     ValidateRuntimeAssets = project.IsPropertyTrue("ValidateRuntimeIdentifierCompatibility"),
-                    CentralPackageVersionsEnabled = isCpvmEnabled && projectStyle == ProjectStyle.PackageReference
+                    CentralPackageVersionsEnabled = isCpvmEnabled && projectStyle == ProjectStyle.PackageReference,
+                    TransitiveDependencyPinningEnabled = isTransitiveDependencyPinningEnabled,
                 };
             }
 
@@ -998,6 +1000,15 @@ namespace NuGet.Build.Tasks.Console
             if (!projectStyle.HasValue || (projectStyle.Value == ProjectStyle.PackageReference))
             {
                 return StringComparer.OrdinalIgnoreCase.Equals(project.GetProperty("_CentralPackageVersionsEnabled"), bool.TrueString);
+            }
+            return false;
+        }
+
+        internal static bool IsTransitiveDependencyPinningEnabled(IMSBuildProject project, ProjectStyle? projectStyle)
+        {
+            if (!projectStyle.HasValue || (projectStyle.Value == ProjectStyle.PackageReference))
+            {
+                return StringComparer.OrdinalIgnoreCase.Equals(project.GetProperty("_TransitiveDependencyPinningEnabled"), bool.TrueString);
             }
             return false;
         }

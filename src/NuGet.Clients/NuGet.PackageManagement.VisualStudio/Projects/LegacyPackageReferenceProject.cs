@@ -129,6 +129,11 @@ namespace NuGet.PackageManagement.VisualStudio
             return MSBuildStringUtility.IsTrue(await _vsProjectAdapter.GetPropertyValueAsync(ProjectBuildProperties.ManagePackageVersionsCentrally));
         }
 
+        private async Task<bool> IsTransitiveDependencyPinningEnabledAsync()
+        {
+            return MSBuildStringUtility.IsTrue(await _vsProjectAdapter.GetPropertyValueAsync(ProjectBuildProperties.EnableTransitiveDependencyPinning));
+        }
+
         private async Task<Dictionary<string, CentralPackageVersion>> GetCentralPackageVersionsAsync()
         {
             IEnumerable<(string PackageId, string Version)> packageVersions =
@@ -162,7 +167,7 @@ namespace NuGet.PackageManagement.VisualStudio
         #region NuGetProject
 
         /// <summary>
-        /// Gets the installed (top level) package references for this project. 
+        /// Gets the installed (top level) package references for this project.
         /// </summary>
         public override async Task<IEnumerable<PackageReference>> GetInstalledPackagesAsync(CancellationToken token)
         {
@@ -410,6 +415,7 @@ namespace NuGet.PackageManagement.VisualStudio
             };
 
             bool isCpvmEnabled = await IsCentralPackageManagementVersionsEnabledAsync();
+            bool isTransitiveDependencyPinningEnabled = await IsTransitiveDependencyPinningEnabledAsync();
             if (isCpvmEnabled)
             {
                 // Add the central version information and merge the information to the package reference dependencies
@@ -471,7 +477,8 @@ namespace NuGet.PackageManagement.VisualStudio
                         await _vsProjectAdapter.GetRestorePackagesWithLockFileAsync(),
                         await _vsProjectAdapter.GetNuGetLockFilePathAsync(),
                         await _vsProjectAdapter.IsRestoreLockedAsync()),
-                    CentralPackageVersionsEnabled = isCpvmEnabled
+                    CentralPackageVersionsEnabled = isCpvmEnabled,
+                    TransitiveDependencyPinningEnabled = isTransitiveDependencyPinningEnabled,
                 }
             };
         }

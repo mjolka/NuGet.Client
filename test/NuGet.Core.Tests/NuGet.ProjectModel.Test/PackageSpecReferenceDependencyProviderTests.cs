@@ -13,7 +13,7 @@ namespace NuGet.ProjectModel.Test
 {
     public class PackageSpecReferenceDependencyProviderTests
     {
-        [Theory(Skip = "https://github.com/NuGet/Home/issues/10133")]
+        [Theory]
         [InlineData(true)]
         [InlineData(false)]
         public void GetSpecDependencies_AddsCentralPackageVersionsIfDefined(bool cpvmEnabled)
@@ -99,7 +99,12 @@ namespace NuGet.ProjectModel.Test
         private static DependencyGraphSpec CreateDependencyGraphSpecWithCentralDependencies(bool cpvmEnabled, params TargetFrameworkInformation[] tfis)
         {
             var packageSpec = new PackageSpec(tfis);
-            packageSpec.RestoreMetadata = new ProjectRestoreMetadata() { ProjectUniqueName = "a", CentralPackageVersionsEnabled = cpvmEnabled };
+            packageSpec.RestoreMetadata = new ProjectRestoreMetadata
+            {
+                ProjectUniqueName = "a",
+                CentralPackageVersionsEnabled = cpvmEnabled,
+                TransitiveDependencyPinningEnabled = cpvmEnabled
+            };
             var dgSpec = new DependencyGraphSpec();
             dgSpec.AddRestore("a");
             dgSpec.AddProject(packageSpec);

@@ -69,7 +69,7 @@ namespace NuGet.ProjectModel
 
         /// <summary>
         /// Framework specific metadata, this may be a subset of the project's frameworks.
-        /// Operations to determine the nearest framework should be done against the project's frameworks, 
+        /// Operations to determine the nearest framework should be done against the project's frameworks,
         /// and then matched directly to this section.
         /// </summary>
         public IList<ProjectRestoreMetadataFrameworkInfo> TargetFrameworks { get; set; } = new List<ProjectRestoreMetadataFrameworkInfo>();
@@ -114,6 +114,8 @@ namespace NuGet.ProjectModel
         public RestoreLockProperties RestoreLockProperties { get; set; } = new RestoreLockProperties();
 
         public bool CentralPackageVersionsEnabled { get; set; }
+
+        public bool TransitiveDependencyPinningEnabled { get; set; }
 
         public override int GetHashCode()
         {
@@ -166,6 +168,7 @@ namespace NuGet.ProjectModel
             hashCode.AddObject(ProjectWideWarningProperties);
             hashCode.AddObject(RestoreLockProperties);
             hashCode.AddObject(CentralPackageVersionsEnabled);
+            hashCode.AddObject(TransitiveDependencyPinningEnabled);
 
             return hashCode.CombinedHash;
         }
@@ -206,7 +209,8 @@ namespace NuGet.ProjectModel
                    EqualityUtility.SequenceEqualWithNullCheck(Files, other.Files) &&
                    EqualityUtility.EqualsWithNullCheck(ProjectWideWarningProperties, other.ProjectWideWarningProperties) &&
                    EqualityUtility.EqualsWithNullCheck(RestoreLockProperties, other.RestoreLockProperties) &&
-                   EqualityUtility.EqualsWithNullCheck(CentralPackageVersionsEnabled, other.CentralPackageVersionsEnabled);
+                   EqualityUtility.EqualsWithNullCheck(CentralPackageVersionsEnabled, other.CentralPackageVersionsEnabled) &&
+                   EqualityUtility.EqualsWithNullCheck(TransitiveDependencyPinningEnabled, other.TransitiveDependencyPinningEnabled);
         }
 
         public virtual ProjectRestoreMetadata Clone()
@@ -239,6 +243,7 @@ namespace NuGet.ProjectModel
             clone.ProjectWideWarningProperties = ProjectWideWarningProperties?.Clone();
             clone.RestoreLockProperties = RestoreLockProperties?.Clone();
             clone.CentralPackageVersionsEnabled = CentralPackageVersionsEnabled;
+            clone.TransitiveDependencyPinningEnabled = TransitiveDependencyPinningEnabled;
         }
     }
 }

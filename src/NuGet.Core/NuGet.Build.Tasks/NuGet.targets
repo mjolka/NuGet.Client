@@ -62,6 +62,7 @@ Copyright (c) .NET Foundation. All rights reserved.
     <GetReferenceNearestTargetFrameworkTaskSupportsTargetPlatformParameter>true</GetReferenceNearestTargetFrameworkTaskSupportsTargetPlatformParameter>
     <!-- Flag if the Central package file is enabled -->
     <_CentralPackageVersionsEnabled Condition="'$(ManagePackageVersionsCentrally)' == 'true' AND '$(CentralPackageVersionsFileImported)' == 'true'">true</_CentralPackageVersionsEnabled>
+    <_TransitiveDependencyPinningEnabled Condition="'$(EnableTransitiveDependencyPinning)' == 'true' AND '$(_CentralPackageVersionsEnabled)' == 'true'">true</_TransitiveDependencyPinningEnabled>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -201,7 +202,7 @@ Copyright (c) .NET Foundation. All rights reserved.
   -->
   <Target Name="CollectFrameworkReferences" Returns="@(_FrameworkReferenceForRestore)">
       <ItemGroup>
-          <_FrameworkReferenceForRestore 
+          <_FrameworkReferenceForRestore
             Include="@(FrameworkReference)"
             Condition="'%(FrameworkReference.IsTransitiveFrameworkReference)' != 'true'"/>
       </ItemGroup>
@@ -733,6 +734,7 @@ Copyright (c) .NET Foundation. All rights reserved.
         <NuGetLockFilePath>$(NuGetLockFilePath)</NuGetLockFilePath>
         <RestoreLockedMode>$(RestoreLockedMode)</RestoreLockedMode>
         <_CentralPackageVersionsEnabled>$(_CentralPackageVersionsEnabled)</_CentralPackageVersionsEnabled>
+        <_TransitiveDependencyPinningEnabled>$(_TransitiveDependencyPinningEnabled)</_TransitiveDependencyPinningEnabled>
       </_RestoreGraphEntry>
     </ItemGroup>
 

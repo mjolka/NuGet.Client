@@ -1760,7 +1760,7 @@ namespace NuGet.Commands.Test
               ""version"": ""1.0.0"",
               ""frameworks"": {
                 ""netcoreapp3.0"": {
-                    
+
                 }
               }
             }";
@@ -1896,7 +1896,7 @@ namespace NuGet.Commands.Test
             }
         }
 
-        [Fact(Skip = "https://github.com/NuGet/Home/issues/10133")]
+        [Fact]
         public async Task RestoreRunner_ExecuteAndCommit_ProjectAssetsIsNotCommitedIfNotChanged()
         {
             var assetsFileName = "project.assets.json";
@@ -1912,7 +1912,8 @@ namespace NuGet.Commands.Test
                   ""version"": ""1.0.0"",
                     ""restore"": {
                                     ""projectUniqueName"": ""TestProject"",
-                                    ""centralPackageVersionsManagementEnabled"": true
+                                    ""centralPackageVersionsManagementEnabled"": true,
+                                    ""transitiveDependencyPinningEnabled"": true
                     },
                   ""frameworks"": {
                     ""net472"": {
