@@ -21,9 +21,11 @@ using NuGet.Packaging.Signing;
 using NuGet.ProjectModel;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
+using NuGet.Protocol.Test;
 using NuGet.Test.Utility;
 using NuGet.Versioning;
 using Test.Utility;
+using Test.Utility.Commands;
 using Test.Utility.ProjectManagement;
 using Test.Utility.Signing;
 using Xunit;
@@ -2064,6 +2066,87 @@ namespace NuGet.Commands.Test
             }
         }
 
+        [Theory]
+        [InlineData(false, "1.0.0")]
+        [InlineData(true, "2.0.0")]
+        public async Task RestoreCommand_CentralVersion_WhenTransitiveDependencyPinning(bool transitivePinning, string expectedVersion)
+        {
+            // Arrange
+            using (var tmpPath = new SimpleTestPathContext())
+            {
+                var packageA100 = new SimpleTestPackageContext { Id = "PackageA", Version = "1.0.0", };
+                packageA100.Dependencies.Add(new SimpleTestPackageContext { Id = "PackageB", Version = "1.0.0" });
+                var packageB100 = new SimpleTestPackageContext { Id = "PackageB", Version = "1.0.0", };
+                var packageB200 = new SimpleTestPackageContext { Id = "PackageB", Version = "2.0.0", };
+
+                var logger = new TestLogger();
+                var projectDirectory = new DirectoryInfo(Path.Combine(tmpPath.SolutionRoot, "Library"));
+                var globalPackages = new DirectoryInfo(Path.Combine(tmpPath.WorkingDirectory, "globalPackages"));
+                var packageSource = new DirectoryInfo(Path.Combine(tmpPath.WorkingDirectory, "packageSource"));
+
+                globalPackages.Create();
+                packageSource.Create();
+
+                var tfi = new TargetFrameworkInformation
+                {
+                    FrameworkName = NuGetFramework.Parse("net471"),
+                    Dependencies = new List<LibraryDependency>(
+                        new[]
+                        {
+                            new LibraryDependency
+                            {
+                                LibraryRange = new LibraryRange("PackageA", VersionRange.Parse("1.0.0"), LibraryDependencyTarget.All),
+                                VersionCentrallyManaged = true,
+                            },
+                        }),
+                    CentralPackageVersions =
+                    {
+                        {"PackageA", new CentralPackageVersion("PackageA", VersionRange.Parse("1.0.0"))},
+                        {"PackageB", new CentralPackageVersion("PackageB", VersionRange.Parse("2.0.0"))},
+                    }
+                };
+
+                var projectSpec = PackageReferenceSpecBuilder.Create("Foo", projectDirectory.FullName)
+                    .WithTargetFrameworks(new[] { tfi })
+                    .Build();
+
+                projectSpec.RestoreMetadata.CentralPackageVersionsEnabled = true;
+                projectSpec.RestoreMetadata.TransitiveDependencyPinningEnabled = transitivePinning;
+
+                var sources = new[] { new PackageSource(packageSource.FullName) }
+                    .Select(source => Repository.Factory.GetCoreV3(source))
+                    .ToList();
+
+                var request = new TestRestoreRequest(
+                    projectSpec,
+                    sources,
+                    globalPackages.FullName,
+                    new List<string>(),
+                    new TestSourceCacheContext(),
+                    ClientPolicyContext.GetClientPolicy(NullSettings.Instance, logger),
+                    logger
+                )
+                { LockFilePath = Path.Combine(projectDirectory.FullName, "project.lock.json") };
+
+                await SimpleTestPackageUtility.CreatePackagesAsync(
+                    packageSource.FullName,
+                    packageA100,
+                    packageB100,
+                    packageB200);
+
+                // Act
+                var command = new RestoreCommand(request);
+                var result = await command.ExecuteAsync();
+                var lockFile = result.LockFile;
+
+                // Assert
+                Assert.True(result.Success);
+                Assert.Equal(2, lockFile.Libraries.Count);
+                var library = lockFile.Libraries.Single(x => x.Name == "PackageB");
+                Assert.Equal(expectedVersion, library.Version.ToString());
+            }
+        }
+
         [Fact]
         public async Task ExecuteAsync_WithSinglePackage_PopulatesCorrectTelemetry()
         {
@@ -2106,7 +2189,7 @@ namespace NuGet.Commands.Test
 
             var projectInformationEvent = telemetryEvents.Single(e => e.Name.Equals("ProjectRestoreInformation"));
 
-            projectInformationEvent.Count.Should().Be(23);
+            projectInformationEvent.Count.Should().Be(24);
             projectInformationEvent["RestoreSuccess"].Should().Be(true);
             projectInformationEvent["NoOpResult"].Should().Be(false);
             projectInformationEvent["IsCentralVersionManagementEnabled"].Should().Be(false);
@@ -2185,7 +2268,7 @@ namespace NuGet.Commands.Test
 
             var projectInformationEvent = telemetryEvents.Single(e => e.Name.Equals("ProjectRestoreInformation"));
 
-            projectInformationEvent.Count.Should().Be(15);
+            projectInformationEvent.Count.Should().Be(16);
             projectInformationEvent["RestoreSuccess"].Should().Be(true);
             projectInformationEvent["NoOpResult"].Should().Be(true);
             projectInformationEvent["IsCentralVersionManagementEnabled"].Should().Be(false);
@@ -2258,7 +2341,7 @@ namespace NuGet.Commands.Test
 
             var projectInformationEvent = telemetryEvents.Single(e => e.Name.Equals("ProjectRestoreInformation"));
 
-            projectInformationEvent.Count.Should().Be(23);
+            projectInformationEvent.Count.Should().Be(24);
             projectInformationEvent["RestoreSuccess"].Should().Be(true);
             projectInformationEvent["NoOpResult"].Should().Be(false);
             projectInformationEvent["TotalUniquePackagesCount"].Should().Be(2);
@@ -2296,6 +2379,7 @@ namespace NuGet.Commands.Test
             {
                 ProjectUniqueName = projectName,
                 CentralPackageVersionsEnabled = cpvmEnabled,
+                TransitiveDependencyPinningEnabled = cpvmEnabled,
                 ProjectStyle = ProjectStyle.PackageReference,
                 TargetFrameworks = new List<ProjectRestoreMetadataFrameworkInfo>() { new ProjectRestoreMetadataFrameworkInfo(framework) },
                 OutputPath = Path.Combine(projectPath, "obj"),
