@@ -1,1 +1,2 @@
+const NuGet.ProjectManagement.ProjectBuildProperties.CLRSupport = "CLRSupport" -> string
 const NuGet.ProjectManagement.ProjectBuildProperties.EnableTransitiveDependencyPinning = "EnableTransitiveDependencyPinning" -> string
