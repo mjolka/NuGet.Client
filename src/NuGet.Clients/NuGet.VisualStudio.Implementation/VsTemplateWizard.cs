@@ -38,7 +38,9 @@ namespace NuGet.VisualStudio
 
         private DTE _dte;
         private Lazy<PreinstalledPackageInstaller> _preinstalledPackageInstaller;
+#pragma warning disable CS0618 // Type or member is obsolete
         private readonly IVsPackageInstallerServices _packageServices;
+#pragma warning restore CS0618 // Type or member is obsolete
         private readonly IOutputConsoleProvider _consoleProvider;
         private readonly IVsSolutionManager _solutionManager;
         private readonly Configuration.ISettings _settings;
@@ -50,7 +52,9 @@ namespace NuGet.VisualStudio
         [ImportingConstructor]
         public VsTemplateWizard(
             IVsPackageInstaller installer,
+#pragma warning disable CS0618 // Type or member is obsolete
             IVsPackageInstallerServices packageServices,
+#pragma warning restore CS0618 // Type or member is obsolete
             IOutputConsoleProvider consoleProvider,
             IVsSolutionManager solutionManager,
             Configuration.ISettings settings,
@@ -459,7 +463,7 @@ namespace NuGet.VisualStudio
             // VsPackageInstaller and VsPackageUninstaller. Because, no powershell scripts get executed
             // as part of the operations performed below. Powershell scripts need to be executed on the
             // pipeline execution thread and they might try to access DTE. Doing that under
-            // ThreadHelper.JoinableTaskFactory.Run will consistently result in a hang
+            // ThreadHelper.JoinableTaskFactory.Run will consistently make the UI stop responding
             NuGetUIThreadHelper.JoinableTaskFactory.Run(async delegate
                 {
                     await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();

@@ -38,7 +38,7 @@ namespace NuGet.PackageManagement.UI
     /// <summary>
     /// Interaction logic for PackageManagerControl.xaml
     /// </summary>
-    public partial class PackageManagerControl : UserControl, IVsWindowSearch
+    public partial class PackageManagerControl : UserControl, IVsWindowSearch, IDisposable
     {
         internal event EventHandler _actionCompleted;
         internal DetailControlModel _detailModel;
@@ -66,6 +66,7 @@ namespace NuGet.PackageManagement.UI
         private bool _recommendPackages = false;
         private string _settingsKey;
         private IServiceBroker _serviceBroker;
+        private bool _disposed = false;
 
         private PackageManagerControl()
         {
@@ -627,7 +628,7 @@ namespace NuGet.PackageManagement.UI
 
                 _root.Children.Insert(0, RestoreBar);
 
-                Model.Context.PackageRestoreManager.PackagesMissingStatusChanged += packageRestoreManager_PackagesMissingStatusChanged;
+                Model.Context.PackageRestoreManager.PackagesMissingStatusChanged += PackageRestoreManager_PackagesMissingStatusChanged;
             }
         }
 
@@ -636,7 +637,7 @@ namespace NuGet.PackageManagement.UI
             if (RestoreBar != null)
             {
                 RestoreBar.CleanUp();
-                Model.Context.PackageRestoreManager.PackagesMissingStatusChanged -= packageRestoreManager_PackagesMissingStatusChanged;
+                Model.Context.PackageRestoreManager.PackagesMissingStatusChanged -= PackageRestoreManager_PackagesMissingStatusChanged;
             }
         }
 
@@ -661,7 +662,7 @@ namespace NuGet.PackageManagement.UI
                 _restartBar.CleanUp();
 
                 Model.Context.PackageRestoreManager.PackagesMissingStatusChanged
-                    -= packageRestoreManager_PackagesMissingStatusChanged;
+                    -= PackageRestoreManager_PackagesMissingStatusChanged;
             }
         }
 
@@ -674,38 +675,22 @@ namespace NuGet.PackageManagement.UI
             _root.Children.Insert(0, _migratorBar);
         }
 
-#pragma warning disable IDE1006 // Naming Styles
-        private void packageRestoreManager_PackagesMissingStatusChanged(object sender, PackagesMissingStatusEventArgs e)
-#pragma warning restore IDE1006 // Naming Styles
+        private void PackageRestoreManager_PackagesMissingStatusChanged(object sender, PackagesMissingStatusEventArgs e)
         {
-            // make sure update happens on the UI thread.
-            NuGetUIThreadHelper.JoinableTaskFactory.Run(async () =>
+            // TODO: PackageRestoreManager fires this event even when solution is closed.
+            // Don't do anything if solution is closed.
+            // Add MissingPackageStatus to keep previous packageMissing status to avoid unnecessarily refresh
+            // only when package is missing last time and is not missing this time, we need to refresh
+            if (!e.PackagesMissing && _missingPackageStatus)
             {
-                await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-
-                // TODO: PackageRestoreManager fires this event even when solution is closed.
-                // Don't do anything if solution is closed.
-                // Add MissingPackageStatus to keep previous packageMissing status to avoid unnecessarily refresh
-                // only when package is missing last time and is not missing this time, we need to refresh
-                if (!e.PackagesMissing && _missingPackageStatus)
+                EmitRefreshEvent(GetTimeSinceLastRefreshAndRestart(), RefreshOperationSource.PackagesMissingStatusChanged, RefreshOperationStatus.Success);
+                NuGetUIThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                 {
-                    await UpdateAfterPackagesMissingStatusChangedAsync();
-                }
+                    await RefreshAsync();
+                }).PostOnFailure(nameof(PackageManagerControl), nameof(PackageRestoreManager_PackagesMissingStatusChanged));
+            }
 
-                _missingPackageStatus = e.PackagesMissing;
-            });
-        }
-
-        // Refresh the UI after packages are restored.
-        // Note that the PackagesMissingStatusChanged event can be fired from a non-UI thread in one case:
-        // the VsSolutionManager.Init() method, which is scheduled on the thread pool.
-        private async ValueTask UpdateAfterPackagesMissingStatusChangedAsync()
-        {
-            VSThreadHelper.ThrowIfNotOnUIThread();
-            var timeSinceLastRefresh = GetTimeSinceLastRefreshAndRestart();
-            await RefreshAsync();
-            EmitRefreshEvent(timeSinceLastRefresh, RefreshOperationSource.PackagesMissingStatusChanged, RefreshOperationStatus.Success);
-            _packageDetail.Refresh();
+            _missingPackageStatus = e.PackagesMissing;
         }
 
         private async Task SetTitleAsync(IProjectMetadataContextInfo projectMetadata = null)
@@ -1341,7 +1326,7 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        public void CleanUp()
+        private void CleanUp()
         {
             NuGetUIThreadHelper.JoinableTaskFactory.Run(async () =>
             {
@@ -1557,6 +1542,27 @@ namespace NuGet.PackageManagement.UI
                 await Model.Context.UIActionEngine.UpgradeNuGetProjectAsync(Model.UIController, project: null);
             })
             .PostOnFailure(nameof(PackageManagerControl), nameof(UpgradeButton_Click));
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                CleanUp();
+            }
+
+            _disposed = true;
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

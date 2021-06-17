@@ -28,6 +28,7 @@ using NuGet.VisualStudio.Telemetry;
 
 namespace NuGet.VisualStudio
 {
+    [Obsolete]
     [Export(typeof(IVsPackageInstallerServices))]
     public class VsPackageInstallerServices : IVsPackageInstallerServices
     {
@@ -321,7 +322,7 @@ namespace NuGet.VisualStudio
             // VsPackageInstaller and VsPackageUninstaller. Because, no powershell scripts get executed
             // as part of the operations performed below. Powershell scripts need to be executed on the
             // pipeline execution thread and they might try to access DTE. Doing that under
-            // ThreadHelper.JoinableTaskFactory.Run will consistently result in a hang
+            // ThreadHelper.JoinableTaskFactory.Run will consistently result in the UI stop responding
             return _threadingService.JoinableTaskFactory.Run(async delegate
             {
                 try
