@@ -59,17 +59,17 @@ namespace NuGet.PackageManagement.UI.TestContract
 
         public void InstallPackage(string packageId, string version)
         {
-            UIInvoke(() => _packageManagerControl.InstallPackage(packageId, NuGetVersion.Parse(version)));
+            UIInvoke(() => _packageManagerControl.InstallPackage(packageId, NuGetVersion.Parse(version), null));
         }
 
         public void UninstallPackage(string packageId)
         {
-            UIInvoke(() => _packageManagerControl.UninstallPackage(packageId));
+            UIInvoke(() => _packageManagerControl.UninstallPackage(packageId, null));
         }
 
         public void UpdatePackage(List<PackageIdentity> packages)
         {
-            UIInvoke(() => _packageManagerControl.UpdatePackage(packages));
+            UIInvoke(() => _packageManagerControl.UpdatePackage(packages, null));
         }
 
         public bool WaitForActionComplete(Action action, TimeSpan timeout)
@@ -124,6 +124,14 @@ namespace NuGet.PackageManagement.UI.TestContract
                 _packageManagerControl.PackageList.LoadItemsCompleted -= eventHandler;
             }
         }
+
+        /// <summary>
+        /// Used for package namespace Apex tests which require All option in package sources.
+        /// </summary>
+        public void SetPackageSourceOptionToAll() => UIInvoke(() => {
+            // First one is always 'All' option
+            _packageManagerControl.SelectedSource = _packageManagerControl.PackageSources.First();
+        });
 
         private void UIInvoke(Action action)
         {

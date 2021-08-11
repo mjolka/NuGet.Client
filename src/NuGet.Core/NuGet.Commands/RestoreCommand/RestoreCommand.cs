@@ -28,6 +28,8 @@ namespace NuGet.Commands
 
         private readonly RestoreRequest _request;
 
+        private readonly LockFileBuilderCache _lockFileBuilderCache;
+
         private bool _success;
 
         private Guid _operationId;
@@ -78,6 +80,7 @@ namespace NuGet.Commands
         public RestoreCommand(RestoreRequest request)
         {
             _request = request ?? throw new ArgumentNullException(nameof(request));
+            _lockFileBuilderCache = request.LockFileBuilderCache;
 
             // Validate the lock file version requested
             if (_request.LockFileVersion < 1 || _request.LockFileVersion > LockFileFormat.Version)
@@ -747,7 +750,8 @@ namespace NuGet.Commands
                         project,
                         graphs,
                         localRepositories,
-                        contextForProject);
+                        contextForProject,
+                        _lockFileBuilderCache);
 
             return lockFile;
         }
@@ -1166,6 +1170,7 @@ namespace NuGet.Commands
         {
             var context = new RemoteWalkContext(
                 request.CacheContext,
+                request.PackageNameSpaces,
                 logger);
 
             foreach (var provider in request.DependencyProviders.LocalProviders)

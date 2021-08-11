@@ -82,7 +82,7 @@ namespace NuGet.Commands
             var ddLibraryRangeToRemoteMatchCache = new ConcurrentDictionary<LibraryRange, Task<Tuple<LibraryRange, RemoteMatch>>>();
             foreach (var targetFrameworkInformation in _request.Project.TargetFrameworks)
             {
-                downloadDependencyResolutionTasks.Add(ResolveDownloadDependencies(
+                downloadDependencyResolutionTasks.Add(ResolveDownloadDependenciesAsync(
                     context,
                     ddLibraryRangeToRemoteMatchCache,
                     targetFrameworkInformation,
@@ -221,10 +221,10 @@ namespace NuGet.Commands
             return null;
         }
 
-        private async Task<DownloadDependencyResolutionResult> ResolveDownloadDependencies(RemoteWalkContext context, ConcurrentDictionary<LibraryRange, Task<Tuple<LibraryRange, RemoteMatch>>> downloadDependenciesCache, TargetFrameworkInformation targetFrameworkInformation, CancellationToken token)
+        private async Task<DownloadDependencyResolutionResult> ResolveDownloadDependenciesAsync(RemoteWalkContext context, ConcurrentDictionary<LibraryRange, Task<Tuple<LibraryRange, RemoteMatch>>> downloadDependenciesCache, TargetFrameworkInformation targetFrameworkInformation, CancellationToken token)
         {
-            var packageDownloadTasks = targetFrameworkInformation.DownloadDependencies.Select(downloadDependency => ResolverUtility.FindPackageLibraryMatchCachedAsync(
-                    downloadDependenciesCache, downloadDependency, context.RemoteLibraryProviders, context.LocalLibraryProviders, context.CacheContext, _logger, token));
+            var packageDownloadTasks = targetFrameworkInformation.DownloadDependencies.Select(downloadDependency =>
+            ResolverUtility.FindPackageLibraryMatchCachedAsync(downloadDependenciesCache, downloadDependency, context, token));
 
             var packageDownloadMatches = await Task.WhenAll(packageDownloadTasks);
 
@@ -303,14 +303,14 @@ namespace NuGet.Commands
             if (!graphSuccess)
             {
                 // Log message for any unresolved dependencies
-                await UnresolvedMessages.LogAsync(graphs, context, context.Logger, token);
+                await UnresolvedMessages.LogAsync(graphs, context, token);
             }
 
             var ddSuccess = downloadDependencyResults.All(e => e.Unresolved.Count == 0);
 
             if (!ddSuccess)
             {
-                await UnresolvedMessages.LogAsync(downloadDependencyResults, context.RemoteLibraryProviders, context.CacheContext, context.Logger, token);
+                await UnresolvedMessages.LogAsync(downloadDependencyResults, context, token);
             }
 
             return graphSuccess && ddSuccess;

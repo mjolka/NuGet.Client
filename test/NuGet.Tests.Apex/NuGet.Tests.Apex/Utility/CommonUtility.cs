@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -78,6 +79,12 @@ namespace NuGet.Tests.Apex
             return RepositoryCountersignPackage(authorSignedPackage, repoCertificate, v3ServiceIndexUrl, packageOwners, timestampProviderUrl);
         }
 
+        public static async Task CreateNetFrameworkPackageInSourceAsync(string packageSource, string packageName, string packageVersion, string requestAdditionalContent = null)
+        {
+            var package = CreatePackage(packageName, packageVersion, requestAdditionalContent);
+            await SimpleTestPackageUtility.CreatePackagesAsync(packageSource, package);
+        }
+
         public static SimpleTestPackageContext AuthorSignPackage(
             SimpleTestPackageContext package,
             X509Certificate2 authorCertificate,
@@ -138,12 +145,17 @@ namespace NuGet.Tests.Apex
             return package;
         }
 
-        public static SimpleTestPackageContext CreatePackage(string packageName, string packageVersion)
+        public static SimpleTestPackageContext CreatePackage(string packageName, string packageVersion, string requestAdditionalContent = null)
         {
             var package = new SimpleTestPackageContext(packageName, packageVersion);
             package.Files.Clear();
             package.AddFile("lib/net45/_._");
             package.AddFile("lib/netstandard1.0/_._");
+
+            if (!string.IsNullOrWhiteSpace(requestAdditionalContent))
+            {
+                package.AddFile("lib/net45/" + requestAdditionalContent);
+            }
 
             return package;
         }
@@ -199,7 +211,6 @@ namespace NuGet.Tests.Apex
                 .Select(e => new LibraryDependency()
                 {
                     LibraryRange = new LibraryRange(e.Attribute(XName.Get("Include")).Value, VersionRange.Parse(e.Attribute(XName.Get("Version")).Value), LibraryDependencyTarget.Package),
-                    Type = LibraryDependencyType.Default,
                     IncludeType = LibraryIncludeFlags.All,
                     SuppressParent = LibraryIncludeFlags.None,
                     NoWarn = new List<NuGetLogCode>(),
@@ -289,6 +300,47 @@ namespace NuGet.Tests.Apex
             logger.LogInformation($"Exists: {exists}");
 
             exists.Should().BeFalse(AppendErrors($"{packageName} should NOT be in {project.Name}", visualStudio));
+        }
+
+        public static void CreateConfigurationFile(string configurationPath, string configurationContent)
+        {
+            using (var file = File.Create(configurationPath))
+            {
+                var info = Encoding.UTF8.GetBytes(configurationContent);
+                file.Write(info, 0, info.Count());
+            }
+        }
+
+        public static string CreateSolutionDirectory(string root)
+        {
+            string parentPath;
+
+            // Loop until we find a directory that isn't taken (extremely unlikely this would need multiple guids).
+            while (true)
+            {
+                var guid = Guid.NewGuid().ToString();
+
+                // Use a shorter path to this easier when debugging
+                parentPath = Path.Combine(root, guid.Split('-')[0]);
+
+                if (Directory.Exists(parentPath))
+                {
+                    // If a collision happens use the full guid
+                    parentPath = Path.Combine(root, guid);
+
+                    if (!Directory.Exists(parentPath))
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            Directory.CreateDirectory(parentPath);
+            return parentPath;
         }
 
         private static bool IsPackageInstalledInAssetsFile(string assetsFilePath, string packageName, string packageVersion, bool expected)

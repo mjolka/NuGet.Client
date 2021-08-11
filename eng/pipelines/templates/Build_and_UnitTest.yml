@@ -269,7 +269,7 @@ steps:
 - task: MicroBuildCodesignVerify@3
   displayName: Verify Assembly Signatures and StrongName for the VSIX & exes
   inputs:
-    TargetFolders: '$(Build.Repository.LocalPath)\\artifacts\\$(VsixPublishDir)'
+    TargetFolders: '$(Build.Repository.LocalPath)\\artifacts\\VS15'
     ApprovalListPathForCerts: '$(Build.Repository.LocalPath)\\build\\ignorecodesign.csv'
     ApprovalListPathForSigs: '$(Build.Repository.LocalPath)\\build\\ignorecodesign.csv'
 
@@ -302,7 +302,7 @@ steps:
   displayName: "Create EndToEnd Test Package"
   inputs:
     scriptName: "$(Build.Repository.LocalPath)\\scripts\\cibuild\\CreateEndToEndTestPackage.ps1"
-    arguments: "-c $(BuildConfiguration) -out $(Build.Repository.LocalPath)\\artifacts\\$(VsixPublishDir)"
+    arguments: "-c $(BuildConfiguration) -out $(Build.Repository.LocalPath)\\artifacts\\VS15"
     failOnStandardError: "true"
   condition: " and(succeeded(),eq(variables['BuildRTM'], 'false')) "
 
@@ -325,8 +325,8 @@ steps:
   inputs:
     channelName: "$(VsTargetChannel)"
     vsMajorVersion: "$(VsTargetMajorVersion)"
-    manifests: '$(Build.Repository.LocalPath)\artifacts\$(VsixPublishDir)\Microsoft.VisualStudio.NuGet.Core.vsman'
-    outputFolder: '$(Build.Repository.LocalPath)\artifacts\$(VsixPublishDir)'
+    manifests: '$(Build.Repository.LocalPath)\artifacts\VS15\Microsoft.VisualStudio.NuGet.Core.vsman'
+    outputFolder: '$(Build.Repository.LocalPath)\artifacts\VS15'
   continueOnError: true
   condition: "and(succeeded(), eq(variables['BuildRTM'], 'false'), eq(variables['IsOfficialBuild'], 'true'))"
 
@@ -383,7 +383,7 @@ steps:
 - task: PublishBuildArtifacts@1
   displayName: "Publish NuGet.exe VSIX and EndToEnd.zip as artifact"
   inputs:
-    PathtoPublish: "$(Build.Repository.LocalPath)\\artifacts\\$(VsixPublishDir)"
+    PathtoPublish: "$(Build.Repository.LocalPath)\\artifacts\\VS15"
     ArtifactName: "$(VsixPublishDir)"
     ArtifactType: "Container"
 
@@ -425,7 +425,7 @@ steps:
   inputs:
     dropServiceURI: 'https://devdiv.artifacts.visualstudio.com'
     buildNumber: 'Products/$(System.TeamProject)/$(Build.Repository.Name)/$(Build.SourceBranchName)/$(Build.BuildNumber)'
-    sourcePath: "$(Build.Repository.LocalPath)\\artifacts\\$(VsixPublishDir)"
+    sourcePath: "$(Build.Repository.LocalPath)\\artifacts\\VS15"
     toLowerCase: false
     usePat: true
     dropMetadataContainerName: "DropMetadata-Product"
@@ -459,12 +459,19 @@ steps:
 - task: CmdLine@2
   displayName: "Publish to the .NET Core build asset registry (BAR)"
   inputs:
-    script: dotnet msbuild $(Build.Repository.LocalPath)\build\publish.proj /t:PublishToBuildAssetRegistry /p:NuGetClientNupkgsDirectoryPath=$(Build.Repository.LocalPath)\artifacts\$(NupkgOutputDir) /p:BUILD_BUILDNUMBER=$(Build.BuildNumber) /p:BUILD_SOURCEBRANCH=$(Build.SourceBranchName) /p:BUILD_SOURCEVERSION=$(Build.SourceVersion) /p:BUILD_REPOSITORY_URI=$(Build.Repository.Uri)  /p:BUILD_REPOSITORY_NAME=$(Build.Repository.Name) /p:ArtifactsLogDir=$(Build.Repository.LocalPath)\artifacts\manifests\ /p:MaestroApiEndpoint=$(MaestroApiEndpoint) /p:MaestroAccessToken=$(MaestroAccessToken)
+    script: dotnet msbuild $(Build.Repository.LocalPath)\build\publish.proj /t:PublishToBuildAssetRegistry /p:NuGetClientNupkgsDirectoryPath=$(Build.Repository.LocalPath)\artifacts\$(NupkgOutputDir) /p:BUILD_BUILDNUMBER=$(Build.BuildNumber) /p:BUILD_SOURCEBRANCH=$(Build.SourceBranchName) /p:BUILD_SOURCEVERSION=$(Build.SourceVersion) /p:BUILD_REPOSITORY_URI=$(Build.Repository.Uri)  /p:BUILD_REPOSITORY_NAME=$(Build.Repository.Name) /p:ArtifactsLogDir=$(Build.Repository.LocalPath)\artifacts\manifests\ /p:MaestroApiEndpoint=$(MaestroApiEndpoint) /p:MaestroAccessToken=$(MaestroAccessToken) /bl:$(Build.StagingDirectory)\binlog\PublishToBuildAssetRegistry.binlog
     workingDirectory: cli
     failOnStderr: true
   env:
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
     DOTNET_MULTILEVEL_LOOKUP: true
+  condition: " and(succeeded(),eq(variables['PublishArtifactsToDotNetBuildAssetRegistry'], 'true'), eq(variables['BuildRTM'], 'false')) "
+
+- task: PublishPipelineArtifact@1
+  displayName: "Publish binlogs"
+  inputs:
+    artifactName: binlog - $(System.JobName) - Attempt $(System.JobAttempt)
+    targetPath: $(Build.StagingDirectory)\binlog
   condition: " and(succeeded(),eq(variables['PublishArtifactsToDotNetBuildAssetRegistry'], 'true'), eq(variables['BuildRTM'], 'false')) "
 
 - task: MicroBuildCleanup@1

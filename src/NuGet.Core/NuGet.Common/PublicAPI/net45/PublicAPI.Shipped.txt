@@ -417,9 +417,6 @@ NuGet.Common.TelemetryActivity.EndIntervalMeasure(string propertyName) -> void
 NuGet.Common.TelemetryActivity.OperationId.get -> System.Guid
 NuGet.Common.TelemetryActivity.ParentId.get -> System.Guid
 NuGet.Common.TelemetryActivity.StartIntervalMeasure() -> void
-NuGet.Common.TelemetryActivity.TelemetryActivity(System.Guid parentId) -> void
-NuGet.Common.TelemetryActivity.TelemetryActivity(System.Guid parentId, System.Guid operationId) -> void
-NuGet.Common.TelemetryActivity.TelemetryActivity(System.Guid parentId, System.Guid operationId, NuGet.Common.TelemetryEvent telemetryEvent) -> void
 NuGet.Common.TelemetryActivity.TelemetryEvent.get -> NuGet.Common.TelemetryEvent
 NuGet.Common.TelemetryActivity.TelemetryEvent.set -> void
 NuGet.Common.TelemetryEvent
@@ -597,8 +594,6 @@ static NuGet.Common.RestoreLogMessage.CreateError(NuGet.Common.NuGetLogCode code
 static NuGet.Common.RestoreLogMessage.CreateError(NuGet.Common.NuGetLogCode code, string message, string libraryId, params string[] targetGraphs) -> NuGet.Common.RestoreLogMessage
 static NuGet.Common.RestoreLogMessage.CreateWarning(NuGet.Common.NuGetLogCode code, string message) -> NuGet.Common.RestoreLogMessage
 static NuGet.Common.RestoreLogMessage.CreateWarning(NuGet.Common.NuGetLogCode code, string message, string libraryId, params string[] targetGraphs) -> NuGet.Common.RestoreLogMessage
-static NuGet.Common.RuntimeEnvironmentHelper.IsDev14.get -> bool
-static NuGet.Common.RuntimeEnvironmentHelper.IsDev14.set -> void
 static NuGet.Common.RuntimeEnvironmentHelper.IsLinux.get -> bool
 static NuGet.Common.RuntimeEnvironmentHelper.IsMacOSX.get -> bool
 static NuGet.Common.RuntimeEnvironmentHelper.IsMono.get -> bool
@@ -608,9 +603,6 @@ static NuGet.Common.TelemetryActivity.Create(NuGet.Common.TelemetryEvent telemet
 static NuGet.Common.TelemetryActivity.Create(System.Guid parentId, NuGet.Common.TelemetryEvent telemetryEvent) -> NuGet.Common.TelemetryActivity
 static NuGet.Common.TelemetryActivity.Create(System.Guid parentId, string eventName) -> NuGet.Common.TelemetryActivity
 static NuGet.Common.TelemetryActivity.Create(string eventName) -> NuGet.Common.TelemetryActivity
-static NuGet.Common.TelemetryActivity.CreateTelemetryActivityWithNewOperationId() -> NuGet.Common.TelemetryActivity
-static NuGet.Common.TelemetryActivity.CreateTelemetryActivityWithNewOperationId(System.Guid parentId) -> NuGet.Common.TelemetryActivity
-static NuGet.Common.TelemetryActivity.CreateTelemetryActivityWithNewOperationIdAndEvent(System.Guid parentId, string eventName) -> NuGet.Common.TelemetryActivity
 static NuGet.Common.TelemetryActivity.EmitTelemetryEvent(NuGet.Common.TelemetryEvent TelemetryEvent) -> void
 static NuGet.Common.TelemetryActivity.NuGetTelemetryService.get -> NuGet.Common.INuGetTelemetryService
 static NuGet.Common.TelemetryActivity.NuGetTelemetryService.set -> void
@@ -645,4 +637,3 @@ virtual NuGet.Common.LoggerBase.LogInformationSummary(string data) -> void
 virtual NuGet.Common.LoggerBase.LogMinimal(string data) -> void
 virtual NuGet.Common.LoggerBase.LogVerbose(string data) -> void
 virtual NuGet.Common.LoggerBase.LogWarning(string data) -> void
-virtual NuGet.Common.TelemetryActivity.Dispose(bool disposing) -> void

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0">
   <!-- Compiler flags -->
   <PropertyGroup Condition=" '$(TargetFramework)' == '$(NETFXTargetFramework)' ">
@@ -33,6 +33,13 @@
   <ItemGroup Condition=" '$(IsNetCoreProject)' == 'true' AND '$(SkipShared)' != 'true' AND '$(TestProject)' == 'true' ">
     <Compile Include="$(BuildCommonDirectory)TestShared\*.cs" />
   </ItemGroup>
+
+  <Target Name="_NuGetClientAddVsThreadingAnalyzerAdditionalFiles" AfterTargets="ResolvePackageAssets;ResolveNuGetPackageAssets">
+    <ItemGroup Condition=" '@(PackageDependencies->AnyHaveMetadataValue('Identity', 'Microsoft.VisualStudio.Threading.Analyzers'))' == 'true'
+                          OR '@(ReferencedNuGetPackages->AnyHaveMetadataValue('Identity', 'Microsoft.VisualStudio.Sdk'))' == 'true' ">
+      <AdditionalFiles Include="$(SharedDirectory)\vs-threading.*.txt" />
+    </ItemGroup>
+  </Target>
 
   <ImportGroup Condition=" '$(SkipSigning)' != 'true' ">
     <Import Project="sign.targets" />
@@ -388,9 +395,23 @@ Condition=" ('%(Extension)' == '.dll' OR '%(Filename)' == 'NuGet.CommandLine.XPl
       Condition=" %(Reference.NuGetPackageId) == 'Newtonsoft.Json' AND %(Reference.NuGetPackageVersion) != '$(NewtonsoftJsonPackageVersion)' " />
   </Target>
 
-  <Target Name="EnsurePackageReferenceVersions">
+   <Target Name="EnsurePackageReferenceVersions">
+    <ItemGroup Condition=" '$(TargetFrameworks)' != '' ">
+      <_TargetFrameworkItems Include="$(TargetFrameworks.Split(';'))" />
+    </ItemGroup>
+    <ItemGroup Condition=" '$(TargetFrameworks)' == '' ">
+      <_TargetFrameworkItems Include="$(TargetFramework)" />
+    </ItemGroup>
+    <MSBuild
+      Projects="$(MSBuildProjectFullPath)"
+      Targets="EnsurePackageReferenceVersionsForFramework"
+      Properties="TargetFramework=%(_TargetFrameworkItems.Identity);"
+    />
+  </Target>
+
+  <Target Name="EnsurePackageReferenceVersionsForFramework">
     <Error
-      Text="%(PackageReference.Identity) should not have a version declared outside of packages.targets but found %(PackageReference.Version)"
+      Text="%(PackageReference.Identity) should not have a version declared outside of packages.targets but found '%(PackageReference.Version)'"
       Condition=" '%(PackageReference.Version)' != '' AND '%(PackageReference.IsImplicitlyDefined)' != 'true' AND '%(PackageReference.Identity)' != 'Microsoft.NET.Test.Sdk' " />
   </Target>
 

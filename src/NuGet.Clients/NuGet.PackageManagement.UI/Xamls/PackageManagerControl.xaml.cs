@@ -2,11 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,7 +14,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft;
 using Microsoft.ServiceHub.Framework;
-using Microsoft.VisualStudio.Experimentation;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
@@ -31,7 +30,6 @@ using NuGet.VisualStudio.Internal.Contracts;
 using NuGet.VisualStudio.Telemetry;
 using Resx = NuGet.PackageManagement.UI;
 using Task = System.Threading.Tasks.Task;
-using VSThreadHelper = Microsoft.VisualStudio.Shell.ThreadHelper;
 
 namespace NuGet.PackageManagement.UI
 {
@@ -51,7 +49,6 @@ namespace NuGet.PackageManagement.UI
         private readonly Guid _sessionGuid = Guid.NewGuid();
         private Stopwatch _sinceLastRefresh;
         private CancellationTokenSource _refreshCts;
-        private bool _forceRecommender;
         // used to prevent starting new search when we update the package sources
         // list in response to PackageSourcesChanged event.
         private bool _dontStartNewSearch;
@@ -172,16 +169,6 @@ namespace NuGet.PackageManagement.UI
             }
 
             _missingPackageStatus = false;
-
-            // check if environment variable RecommendNuGetPackages to turn on recommendations is set to 1
-            try
-            {
-                _forceRecommender = (Environment.GetEnvironmentVariable("NUGET_RECOMMEND_PACKAGES") == "1");
-            }
-            catch (SecurityException)
-            {
-                // don't make recommendations if we are not able to read the environment variable
-            }
         }
 
         public PackageRestoreBar RestoreBar { get; private set; }
@@ -202,6 +189,9 @@ namespace NuGet.PackageManagement.UI
         internal IEnumerable<PackageSourceMoniker> PackageSources => _topPanel.SourceRepoList.Items.OfType<PackageSourceMoniker>();
 
         public bool IncludePrerelease => _topPanel.CheckboxPrerelease.IsChecked == true;
+
+        public INuGetExperimentationService NuGetExperimentationService { get; private set; }
+
 
         private void OnProjectUpdated(object sender, IProjectContextInfo project)
         {
@@ -807,10 +797,9 @@ namespace NuGet.PackageManagement.UI
                 searchTask: null);
         }
 
-        // Check if user has environment variable of NUGET_RECOMMEND_PACKAGES set to 1 or is in A/B experiment.
-        public bool IsRecommenderFlightEnabled()
+        public static bool IsRecommenderFlightEnabled(INuGetExperimentationService nuGetExperimentationService)
         {
-            return _forceRecommender || ExperimentationService.Default.IsCachedFlightEnabled("nugetrecommendpkgs");
+            return nuGetExperimentationService.IsExperimentEnabled(ExperimentationConstants.PackageRecommender);
         }
 
         /// <summary>
@@ -835,7 +824,7 @@ namespace NuGet.PackageManagement.UI
 
             try
             {
-                bool useRecommender = GetUseRecommendedPackages(loadContext, searchText);
+                bool useRecommender = await GetUseRecommendedPackagesAsync(loadContext, searchText);
                 var loader = await PackageItemLoader.CreateAsync(
                     Model.Context.ServiceBroker,
                     Model.Context.ReconnectingSearchService,
@@ -878,7 +867,7 @@ namespace NuGet.PackageManagement.UI
             }
         }
 
-        private bool GetUseRecommendedPackages(PackageLoadContext loadContext, string searchText)
+        private async Task<bool> GetUseRecommendedPackagesAsync(PackageLoadContext loadContext, string searchText)
         {
             // only make recommendations when
             //   the single source repository is nuget.org,
@@ -894,8 +883,9 @@ namespace NuGet.PackageManagement.UI
                 _recommendPackages = true;
             }
 
+            NuGetExperimentationService = await ServiceLocator.GetInstanceAsync<INuGetExperimentationService>();
             // Check for A/B experiment here. For control group, return false instead of _recommendPackages
-            if (IsRecommenderFlightEnabled())
+            if (IsRecommenderFlightEnabled(NuGetExperimentationService))
             {
                 return _recommendPackages;
             }
@@ -912,7 +902,7 @@ namespace NuGet.PackageManagement.UI
 
             await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-            _topPanel.UpdateDeprecationStatusOnInstalledTab(installedDeprecatedPackagesCount: 0);
+            _topPanel.UpdateWarningStatusOnInstalledTab(installedVulnerablePackagesCount: 0, installedDeprecatedPackagesCount: 0);
             _topPanel.UpdateCountOnUpdatesTab(count: 0);
             var loadContext = new PackageLoadContext(Model.IsSolution, Model.Context);
             var loader = await PackageItemLoader.CreateAsync(
@@ -929,9 +919,8 @@ namespace NuGet.PackageManagement.UI
             Interlocked.Exchange(ref _refreshCts, refreshCts)?.Cancel();
 
             // Update installed tab warning icon
-            var installedDeprecatedPackagesCount = await GetInstalledDeprecatedPackagesCountAsync(loadContext, refreshCts.Token);
-
-            _topPanel.UpdateDeprecationStatusOnInstalledTab(installedDeprecatedPackagesCount);
+            (int vulnerablePackages, int deprecatedPackages) = await GetInstalledVulnerableAndDeprecatedPackagesCountAsync(loadContext, refreshCts.Token);
+            _topPanel.UpdateWarningStatusOnInstalledTab(vulnerablePackages, deprecatedPackages);
 
             // Update updates tab count
             Model.CachedUpdates = new PackageSearchMetadataCache
@@ -944,26 +933,40 @@ namespace NuGet.PackageManagement.UI
             _topPanel.UpdateCountOnUpdatesTab(Model.CachedUpdates.Packages.Count);
         }
 
-        private async Task<int> GetInstalledDeprecatedPackagesCountAsync(PackageLoadContext loadContext, CancellationToken token)
+        private async Task<(int, int)> GetInstalledVulnerableAndDeprecatedPackagesCountAsync(PackageLoadContext loadContext, CancellationToken token)
         {
             // Switch off the UI thread before fetching installed packages and deprecation metadata.
             await TaskScheduler.Default;
 
             PackageCollection installedPackages = await loadContext.GetInstalledPackagesAsync();
 
-            var installedPackageDeprecationMetadata = await Task.WhenAll(
-                installedPackages.Select(p => GetPackageDeprecationMetadataAsync(p, token)));
+            var installedPackageMetadata = await Task.WhenAll(
+                installedPackages.Select(p => GetPackageMetadataAsync(p, token)));
 
-            return installedPackageDeprecationMetadata.Count(d => d != null);
+            int vulnerablePackagesCount = 0;
+            int deprecatedPackagesCount = 0;
+            foreach ((PackageSearchMetadataContextInfo s, PackageDeprecationMetadataContextInfo d) in installedPackageMetadata)
+            {
+                if (s.Vulnerabilities != null && s.Vulnerabilities.Any())
+                {
+                    vulnerablePackagesCount++;
+                }
+                if (d != null)
+                {
+                    deprecatedPackagesCount++;
+                }
+            }
+
+            return (vulnerablePackagesCount, deprecatedPackagesCount);
         }
 
-        private async Task<PackageDeprecationMetadataContextInfo> GetPackageDeprecationMetadataAsync(PackageCollectionItem package, CancellationToken cancellationToken)
+        private async Task<(PackageSearchMetadataContextInfo, PackageDeprecationMetadataContextInfo)> GetPackageMetadataAsync(PackageCollectionItem package, CancellationToken cancellationToken)
         {
             using (INuGetSearchService searchService = await _serviceBroker.GetProxyAsync<INuGetSearchService>(NuGetServices.SearchService, cancellationToken: cancellationToken))
             {
                 Assumes.NotNull(searchService);
                 await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                return await searchService.GetDeprecationMetadataAsync(package, SelectedSource.PackageSources, true, cancellationToken);
+                return await searchService.GetPackageMetadataAsync(package, SelectedSource.PackageSources, true, cancellationToken);
             }
         }
 
@@ -1433,12 +1436,18 @@ namespace NuGet.PackageManagement.UI
                 return;
             }
 
-            UninstallPackage(package.Id);
+            UninstallPackage(package.Id, new[] { package });
         }
 
-        private void SetOptions(NuGetUI nugetUi, NuGetActionType actionType)
+        private void SetOptions(NuGetUI nugetUi, NuGetActionType actionType, IEnumerable<PackageItemViewModel> packages)
         {
             var options = _detailModel.Options;
+            IEnumerable<PackageItemViewModel> vulnerablePkgs = packages?
+                .Where(x => x.Vulnerabilities?.Any() ?? false) ??
+                Enumerable.Empty<PackageItemViewModel>();
+            int vulnerablePkgsCount = vulnerablePkgs.Count();
+            IEnumerable<int> vulnerablePkgsMaxSeverities = vulnerablePkgs
+                .Select(pkg => pkg.Vulnerabilities.Max(v => v.Severity));
 
             nugetUi.FileConflictAction = options.SelectedFileConflictAction.Action;
             nugetUi.DependencyBehavior = options.SelectedDependencyBehavior.Behavior;
@@ -1446,9 +1455,10 @@ namespace NuGet.PackageManagement.UI
             nugetUi.ForceRemove = options.ForceRemove;
             nugetUi.DisplayPreviewWindow = options.ShowPreviewWindow;
             nugetUi.DisplayDeprecatedFrameworkWindow = options.ShowDeprecatedFrameworkWindow;
-
             nugetUi.Projects = Model.Context.Projects;
             nugetUi.ProjectContext.ActionType = actionType;
+            nugetUi.TopLevelVulnerablePackagesCount = vulnerablePkgsCount;
+            nugetUi.TopLevelVulnerablePackagesMaxSeverities = vulnerablePkgsMaxSeverities.ToList();
         }
 
         private void ExecuteInstallPackageCommand(object sender, ExecutedRoutedEventArgs e)
@@ -1458,9 +1468,8 @@ namespace NuGet.PackageManagement.UI
             {
                 return;
             }
-
             var versionToInstall = package.LatestVersion ?? package.Version;
-            InstallPackage(package.Id, versionToInstall);
+            InstallPackage(package.Id, versionToInstall, new[] { package });
         }
 
         private void PackageList_UpdateButtonClicked(PackageItemViewModel[] selectedPackages)
@@ -1469,7 +1478,7 @@ namespace NuGet.PackageManagement.UI
                 .Select(package => new PackageIdentity(package.Id, package.Version))
                 .ToList();
 
-            UpdatePackage(packagesToUpdate);
+            UpdatePackage(packagesToUpdate, selectedPackages);
         }
 
         private void ExecuteRestartSearchCommand(object sender, ExecutedRoutedEventArgs e)
@@ -1479,13 +1488,41 @@ namespace NuGet.PackageManagement.UI
                 .PostOnFailure(nameof(PackageManagerControl), nameof(ExecuteRestartSearchCommand));
         }
 
+        private void ExecuteSearchPackageCommand(object sender, ExecutedRoutedEventArgs e)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            var alternatePackageId = e.Parameter as string;
+            if (!string.IsNullOrWhiteSpace(alternatePackageId))
+            {
+                if (_windowSearchHost?.IsEnabled == true)
+                {
+                    if (_windowSearchHost.SearchTask != null)
+                    {
+                        // Terminate current PM UI search task
+                        _windowSearchHost.SearchAsync(pSearchQuery: null);
+                    }
+                    if (_windowSearchHost.SearchTask == null)
+                    {
+                        _topPanel.SelectFilter(ItemFilter.All);
+                        Search("packageid:" + alternatePackageId);
+                    }
+                }
+            }
+        }
+
         private async Task ExecuteRestartSearchCommandAsync()
         {
             await SearchPackagesAndRefreshUpdateCountAsync(useCacheForUpdates: false);
             await RefreshConsolidatablePackagesCountAsync();
         }
 
-        internal void InstallPackage(string packageId, NuGetVersion version)
+        /// <summary>
+        /// Install a package in open project(s)
+        /// </summary>
+        /// <param name="packageId">Package ID to install</param>
+        /// <param name="version">Package Version to install</param>
+        /// <param name="packagesInfo">Corresponding Package ViewModels from PM UI. Only needed for vulnerability telemetry counts. Can be <c>null</c></param>
+        internal void InstallPackage(string packageId, NuGetVersion version, IEnumerable<PackageItemViewModel> packagesInfo)
         {
             var action = UserAction.CreateInstallAction(packageId, version);
 
@@ -1497,10 +1534,15 @@ namespace NuGet.PackageManagement.UI
                         action,
                         CancellationToken.None);
                 },
-                nugetUi => SetOptions(nugetUi, NuGetActionType.Install));
+                nugetUi => SetOptions(nugetUi, NuGetActionType.Install, packagesInfo));
         }
 
-        internal void UninstallPackage(string packageId)
+        /// <summary>
+        /// Uninstall a package in open project(s)
+        /// </summary>
+        /// <param name="packageId">Package ID to uninstall</param>
+        /// <param name="packagesInfo">Corresponding Package ViewModels from PM UI. Only needed for vulnerability telemetry counts. Can be <c>null</c></param>
+        internal void UninstallPackage(string packageId, IEnumerable<PackageItemViewModel> packagesInfo)
         {
             var action = UserAction.CreateUnInstallAction(packageId);
 
@@ -1512,10 +1554,15 @@ namespace NuGet.PackageManagement.UI
                         action,
                         CancellationToken.None);
                 },
-                nugetUi => SetOptions(nugetUi, NuGetActionType.Uninstall));
+                nugetUi => SetOptions(nugetUi, NuGetActionType.Uninstall, packagesInfo));
         }
 
-        internal void UpdatePackage(List<PackageIdentity> packages)
+        /// <summary>
+        /// Updates packages in open project(s)
+        /// </summary>
+        /// <param name="packages">Packages identities to update</param>
+        /// <param name="packagesInfo">Corresponding Package ViewModels from PM UI. Only needed for vulnerability telemetry counts. Can be <c>null</c></param>
+        internal void UpdatePackage(List<PackageIdentity> packages, IEnumerable<PackageItemViewModel> packagesInfo)
         {
             if (packages.Count == 0)
             {
@@ -1530,7 +1577,7 @@ namespace NuGet.PackageManagement.UI
                         packages,
                         CancellationToken.None);
                 },
-                nugetUi => SetOptions(nugetUi, NuGetActionType.Update));
+                nugetUi => SetOptions(nugetUi, NuGetActionType.Update, packagesInfo));
         }
 
         private void UpgradeButton_Click(object sender, RoutedEventArgs e)
