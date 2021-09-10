@@ -2188,7 +2188,7 @@ namespace NuGet.Commands.Test
 
             var projectInformationEvent = telemetryEvents.Single(e => e.Name.Equals("ProjectRestoreInformation"));
 
-            projectInformationEvent.Count.Should().Be(24);
+            projectInformationEvent.Count.Should().Be(25);
             projectInformationEvent["RestoreSuccess"].Should().Be(true);
             projectInformationEvent["NoOpResult"].Should().Be(false);
             projectInformationEvent["IsCentralVersionManagementEnabled"].Should().Be(false);
@@ -2213,6 +2213,7 @@ namespace NuGet.Commands.Test
             projectInformationEvent["OperationId"].Should().NotBeNull();
             projectInformationEvent["Duration"].Should().NotBeNull();
             projectInformationEvent["PackageSourceMapping.IsMappingEnabled"].Should().Be(false);
+            projectInformationEvent["IsTransitiveDependencyPinningEnabled"].Should().Be(false);
         }
 
         [Fact]
@@ -2268,7 +2269,7 @@ namespace NuGet.Commands.Test
 
             var projectInformationEvent = telemetryEvents.Single(e => e.Name.Equals("ProjectRestoreInformation"));
 
-            projectInformationEvent.Count.Should().Be(16);
+            projectInformationEvent.Count.Should().Be(17);
             projectInformationEvent["RestoreSuccess"].Should().Be(true);
             projectInformationEvent["NoOpResult"].Should().Be(true);
             projectInformationEvent["IsCentralVersionManagementEnabled"].Should().Be(false);
@@ -2285,6 +2286,7 @@ namespace NuGet.Commands.Test
             projectInformationEvent["NoOpRestoreOutputEvaluationDuration"].Should().NotBeNull();
             projectInformationEvent["NoOpReplayLogsDuration"].Should().NotBeNull();
             projectInformationEvent["PackageSourceMapping.IsMappingEnabled"].Should().Be(false);
+            projectInformationEvent["IsTransitiveDependencyPinningEnabled"].Should().Be(false);
         }
 
         [Fact]
@@ -2342,12 +2344,13 @@ namespace NuGet.Commands.Test
 
             var projectInformationEvent = telemetryEvents.Single(e => e.Name.Equals("ProjectRestoreInformation"));
 
-            projectInformationEvent.Count.Should().Be(24);
+            projectInformationEvent.Count.Should().Be(25);
             projectInformationEvent["RestoreSuccess"].Should().Be(true);
             projectInformationEvent["NoOpResult"].Should().Be(false);
             projectInformationEvent["TotalUniquePackagesCount"].Should().Be(2);
             projectInformationEvent["NewPackagesInstalledCount"].Should().Be(1);
             projectInformationEvent["PackageSourceMapping.IsMappingEnabled"].Should().Be(false);
+            projectInformationEvent["IsTransitiveDependencyPinningEnabled"].Should().Be(false);
         }
 
         /// A 1.0.0 -> C 1.0.0 -> D 1.1.0
