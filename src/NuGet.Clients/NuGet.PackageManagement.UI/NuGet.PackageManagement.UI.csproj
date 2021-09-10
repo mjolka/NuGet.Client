@@ -55,6 +55,7 @@
     <Compile Include="Automation\ISelectableItem.cs" />
     <Compile Include="Automation\ISelectableItemsControl.cs" />
     <Compile Include="Automation\ListBoxToggleableItemsAutomationPeer.cs" />
+    <Compile Include="Automation\ListViewToggleableItemsAutomationPeer.cs" />
     <Compile Include="Automation\ToggleableItemAutomationPeer.cs" />
     <Compile Include="Common\ErrorFloodGate.cs" />
     <Compile Include="Converters\AdditionConverter.cs" />
@@ -64,6 +65,7 @@
     <Compile Include="Converters\DateTimeConverter.cs" />
     <Compile Include="Converters\IntToVulnerabilitySeverityConverter.cs" />
     <Compile Include="Converters\InverseBooleanConverter.cs" />
+    <Compile Include="Converters\ParametersToHyperlinkTupleConverter.cs" />
     <Compile Include="Converters\SubstractionConverter.cs" />
     <Compile Include="Converters\RadioBoolToIntConverter.cs" />
     <Compile Include="Converters\TooltipConverter.cs" />
@@ -202,7 +204,6 @@
     <Compile Include="IItemLoader.cs" />
     <Compile Include="InfiniteScrollListItemStyleSelector.cs" />
     <Compile Include="LoadingStatusIndicator.cs" />
-    <Compile Include="Models\AlternativePackageManagerProviders.cs" />
     <Compile Include="ViewModels\PackageItemViewModel.cs" />
     <Compile Include="Models\PackageStatus.cs" />
     <Compile Include="Converters\NotNullToBooleanConverter.cs" />
@@ -238,7 +239,6 @@
     <Compile Include="UserInterfaceService\NuGetUIContext.cs" />
     <Compile Include="UserInterfaceService\NuGetUIProjectContext.cs" />
     <Compile Include="UserSettings.cs" />
-    <Compile Include="Utility\PackageManagerProviderUtility.cs" />
     <Compile Include="Utility\UIUtility.cs" />
     <Compile Include="VsDialogWindow.cs" />
     <Compile Include="Xamls\ActionsAndVersions.xaml.cs">
@@ -249,9 +249,6 @@
     </Compile>
     <Compile Include="Xamls\LoadingStatusBar.xaml.cs">
       <DependentUpon>LoadingStatusBar.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Xamls\PackageManagerProvidersLabel.xaml.cs">
-      <DependentUpon>PackageManagerProvidersLabel.xaml</DependentUpon>
     </Compile>
     <Compile Include="Xamls\ProjectView.xaml.cs">
       <DependentUpon>ProjectView.xaml</DependentUpon>
@@ -367,10 +364,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Xamls\LoadingStatusBar.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Xamls\PackageManagerProvidersLabel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

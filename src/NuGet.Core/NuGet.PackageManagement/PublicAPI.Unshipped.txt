@@ -1,4 +1,5 @@
 NuGet.PackageManagement.GatherContext.GatherContext(NuGet.Configuration.PackageNamespacesConfiguration packageNamespacesConfiguration) -> void
 NuGet.PackageManagement.GatherContext.PackageNamespacesConfiguration.get -> NuGet.Configuration.PackageNamespacesConfiguration
+const NuGet.ProjectManagement.ProjectBuildProperties.AssemblyName = "AssemblyName" -> string
 const NuGet.ProjectManagement.ProjectBuildProperties.CLRSupport = "CLRSupport" -> string
 const NuGet.ProjectManagement.ProjectBuildProperties.EnableTransitiveDependencyPinning = "EnableTransitiveDependencyPinning" -> string
