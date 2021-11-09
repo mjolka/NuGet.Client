@@ -1621,7 +1621,7 @@ EndGlobal";
         }
 
         [Fact]
-        public async Task WhenPackageNamespacesConfiguredInstallsPackageReferencesAndDownloadsFromExpectedSources_Success()
+        public async Task WhenPackageSourceMappingConfiguredInstallsPackageReferencesAndDownloadsFromExpectedSources_Success()
         {
             using var pathContext = _msbuildFixture.CreateSimpleTestPathContext();
 
@@ -1700,7 +1700,7 @@ EndGlobal";
         }
 
         [Fact]
-        public async Task WhenPackageNamespacesConfiguredAndNoMatchingSourceFound_Fails()
+        public async Task WhenPackageSourceMappingConfiguredAndNoMatchingSourceFound_Fails()
         {
             using var pathContext = _msbuildFixture.CreateSimpleTestPathContext();
 
@@ -1777,7 +1777,7 @@ EndGlobal";
         }
 
         [Fact]
-        public async Task DotnetRestore_NameSpaceFilter_WithAllSourceOptions_Succeed()
+        public async Task DotnetRestore_PackageSourceMappingFilter_WithAllSourceOptions_Succeed()
         {
             using var pathContext = _msbuildFixture.CreateSimpleTestPathContext();
 
@@ -1854,14 +1854,14 @@ EndGlobal";
             Assert.Contains($"Installed {packageZ} {version} from {pathContext.PackageSource}", result.AllOutput);
             Assert.Contains($"Installed {packageY} {version} from {pathContext.PackageSource}", result.AllOutput);
             Assert.Contains($"Installed {packageK} {version} from {packageSource2.FullName}", result.AllOutput);
-            Assert.Contains($"Package namespace matches found for package ID 'Y' are: 'source1'.", result.AllOutput);
-            Assert.Contains($"Package namespace matches found for package ID 'Z' are: 'source1'.", result.AllOutput);
-            Assert.Contains($"Package namespace matches found for package ID 'X' are: 'source2'.", result.AllOutput);
-            Assert.Contains($"Package namespace matches found for package ID 'K' are: 'source2'.", result.AllOutput);
+            Assert.Contains($"Package source mapping matches found for package ID 'Y' are: 'source1'.", result.AllOutput);
+            Assert.Contains($"Package source mapping matches found for package ID 'Z' are: 'source1'.", result.AllOutput);
+            Assert.Contains($"Package source mapping matches found for package ID 'X' are: 'source2'.", result.AllOutput);
+            Assert.Contains($"Package source mapping matches found for package ID 'K' are: 'source2'.", result.AllOutput);
         }
 
         [Fact]
-        public async Task DotnetRestore_NameSpaceFilter_WithNotEnoughSourceOptions_Fails()
+        public async Task DotnetRestore_PackageSourceMappingFilter_WithNotEnoughSourceOptions_Fails()
         {
             using var pathContext = _msbuildFixture.CreateSimpleTestPathContext();
 
@@ -1924,10 +1924,153 @@ EndGlobal";
             var result = _msbuildFixture.RunDotnet(pathContext.WorkingDirectory, $"restore {projectA.ProjectPath} --source {packageSource2.FullName} -v d", ignoreExitCode: true);
 
             result.Success.Should().BeFalse(because: result.AllOutput);
-            Assert.Contains("Package namespace match not found for package ID 'Y'", result.AllOutput);
+            Assert.Contains("Package source mapping match not found for package ID 'Y'", result.AllOutput);
             Assert.Contains($"NU1100: Unable to resolve '{packageY} (>= {version})'", result.AllOutput);
-            Assert.Contains($"Package namespace matches found for package ID 'X' are: 'source2'.", result.AllOutput);
+            Assert.Contains($"Package source mapping matches found for package ID 'X' are: 'source2'.", result.AllOutput);
             Assert.Contains($"Installed {packageX} {version} from {packageSource2.FullName}", result.AllOutput);
+        }
+
+        [Fact]
+        public async Task WhenPackageSourceMappingIsEnabled_InstallsPackagesFromRestoreSources_Success()
+        {
+            using var pathContext = _msbuildFixture.CreateSimpleTestPathContext();
+
+            // Set up solution, and project
+            var solution = new SimpleTestSolutionContext(pathContext.SolutionRoot);
+            var projFramework = CommonFrameworks.Net50;
+            var projectPackageName = "projectA";
+            var projectA = SimpleTestProjectContext.CreateNETCore(
+               projectPackageName,
+               pathContext.SolutionRoot,
+               projFramework);
+
+            const string version = "1.0.0";
+            const string packageX = "X", packageY = "Y";
+
+            var packageX100 = new SimpleTestPackageContext(packageX, version);
+            var packageY100 = new SimpleTestPackageContext(packageY, version);
+
+            projectA.AddPackageToAllFrameworks(packageX100);
+            projectA.AddPackageToAllFrameworks(packageY100);
+
+            var packageSource2 = new DirectoryInfo(Path.Combine(pathContext.WorkingDirectory, "source2"));
+            packageSource2.Create();
+
+            // Add RestoreSources
+            projectA.Properties.Add("RestoreSources", $"{packageSource2.FullName};{pathContext.PackageSource}");
+
+            solution.Projects.Add(projectA);
+            solution.Create(pathContext.SolutionRoot);
+
+            await SimpleTestPackageUtility.CreateFolderFeedV3Async(
+                    pathContext.PackageSource,
+                    PackageSaveMode.Defaultv3,
+                    packageX100,
+                    packageY100);
+
+            await SimpleTestPackageUtility.CreateFolderFeedV3Async(
+                    packageSource2.FullName,
+                    PackageSaveMode.Defaultv3,
+                    packageX100,
+                    packageY100);
+
+            var configFile = @$"<?xml version=""1.0"" encoding=""utf-8""?>
+<configuration>
+    <packageSources>        
+        <add key=""source2"" value=""{packageSource2.FullName}"" />
+    </packageSources>
+        <packageSourceMapping>
+            <packageSource key=""source"">
+                <package pattern=""{packageY}*"" />
+            </packageSource>
+            <packageSource key=""source2"">
+                <package pattern=""{packageX}*"" />
+            </packageSource>
+    </packageSourceMapping>
+</configuration>
+";
+            File.WriteAllText(Path.Combine(pathContext.SolutionRoot, projectA.ProjectName, "NuGet.Config"), configFile);
+
+            //Act
+            var result = _msbuildFixture.RunDotnet(pathContext.WorkingDirectory, $"restore {projectA.ProjectPath} -v d", ignoreExitCode: true);
+
+            // Assert
+            result.Success.Should().BeTrue(because: result.AllOutput);
+            Assert.Contains($"Installed {packageY} {version} from {pathContext.PackageSource}", result.AllOutput);
+            Assert.Contains($"Installed {packageX} {version} from {packageSource2.FullName}", result.AllOutput);
+        }
+
+        [Fact]
+        public async Task WhenPackageSourceMappingIsEnabled_CanotInstallsPackagesFromRestoreSources_Fails()
+        {
+            using var pathContext = _msbuildFixture.CreateSimpleTestPathContext();
+
+            // Set up solution, and project
+            var solution = new SimpleTestSolutionContext(pathContext.SolutionRoot);
+            var projFramework = CommonFrameworks.Net50;
+            var projectPackageName = "projectA";
+            var projectA = SimpleTestProjectContext.CreateNETCore(
+               projectPackageName,
+               pathContext.SolutionRoot,
+               projFramework);
+
+            const string version = "1.0.0";
+            const string packageX = "X", packageY = "Y";
+
+            var packageX100 = new SimpleTestPackageContext(packageX, version);
+            var packageY100 = new SimpleTestPackageContext(packageY, version);
+
+
+            projectA.AddPackageToAllFrameworks(packageX100);
+            projectA.AddPackageToAllFrameworks(packageY100);
+
+            var packageSource2 = new DirectoryInfo(Path.Combine(pathContext.WorkingDirectory, "source2"));
+            packageSource2.Create();
+
+            // Add RestoreSources
+            projectA.Properties.Add("RestoreSources", $"{pathContext.PackageSource}");
+
+            solution.Projects.Add(projectA);
+            solution.Create(pathContext.SolutionRoot);
+
+            await SimpleTestPackageUtility.CreateFolderFeedV3Async(
+                    pathContext.PackageSource,
+                    PackageSaveMode.Defaultv3,
+                    packageX100,
+                    packageY100);
+
+            await SimpleTestPackageUtility.CreateFolderFeedV3Async(
+                    packageSource2.FullName,
+                    PackageSaveMode.Defaultv3,
+                    packageX100,
+                    packageY100);
+
+            var configFile = @$"<?xml version=""1.0"" encoding=""utf-8""?>
+<configuration>
+    <packageSources>        
+        <add key=""source2"" value=""{packageSource2.FullName}"" />
+    </packageSources>
+        <packageSourceMapping>
+            <packageSource key=""source"">
+                <package pattern=""{packageY}*"" />
+            </packageSource>
+            <packageSource key=""source2"">
+                <package pattern=""{packageX}*"" />
+            </packageSource>
+    </packageSourceMapping>
+</configuration>
+";
+            File.WriteAllText(Path.Combine(pathContext.SolutionRoot, projectA.ProjectName, "NuGet.Config"), configFile);
+
+            //Act
+            var result = _msbuildFixture.RunDotnet(pathContext.WorkingDirectory, $"restore {projectA.ProjectPath} -v d", ignoreExitCode: true);
+
+            //Assert
+            result.Success.Should().BeFalse(because: result.AllOutput);
+            Assert.Contains("Package source mapping match not found for package ID 'X'", result.AllOutput);
+            Assert.Contains($"NU1100: Unable to resolve '{packageX} (>= {version})'", result.AllOutput);
+            Assert.Contains($"Package source mapping matches found for package ID 'Y' are: 'source'.", result.AllOutput);
+            Assert.Contains($"Installed {packageY} {version} from {pathContext.PackageSource}", result.AllOutput);
         }
 
         private static SimpleTestPackageContext CreateNetstandardCompatiblePackage(string id, string version)

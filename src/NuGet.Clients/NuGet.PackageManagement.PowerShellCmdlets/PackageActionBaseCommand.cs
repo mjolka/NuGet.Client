@@ -29,8 +29,9 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
 
         public PackageActionBaseCommand()
         {
-            _deleteOnRestartManager = ServiceLocator.GetComponentModelService<IDeleteOnRestartManager>();
-            _lockService = ServiceLocator.GetComponentModelService<INuGetLockService>();
+            var componentModel = NuGetUIThreadHelper.JoinableTaskFactory.Run(ServiceLocator.GetComponentModelAsync);
+            _deleteOnRestartManager = componentModel.GetService<IDeleteOnRestartManager>();
+            _lockService = componentModel.GetService<INuGetLockService>();
         }
 
         [Parameter(Mandatory = true, ValueFromPipelineByPropertyName = true, Position = 0)]
@@ -155,19 +156,12 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
                     RefreshUI(actions);
                 }
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException ex) when (ex.InnerException is PackageAlreadyInstalledException)
             {
-                if (ex.InnerException is PackageAlreadyInstalledException)
-                {
-                    // Set nuget operation status to NoOp for telemetry event when package
-                    // is already installed.
-                    _status = NuGetOperationStatus.NoOp;
-                    Log(MessageLevel.Info, ex.Message);
-                }
-                else
-                {
-                    throw ex;
-                }
+                // Set nuget operation status to NoOp for telemetry event when package
+                // is already installed.
+                _status = NuGetOperationStatus.NoOp;
+                Log(MessageLevel.Info, ex.Message);
             }
         }
 
@@ -229,19 +223,12 @@ namespace NuGet.PackageManagement.PowerShellCmdlets
                     RefreshUI(actions);
                 }
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException ex) when (ex.InnerException is PackageAlreadyInstalledException)
             {
-                if (ex.InnerException is PackageAlreadyInstalledException)
-                {
-                    // Set nuget operation status to NoOp for telemetry event when package
-                    // is already installed.
-                    _status = NuGetOperationStatus.NoOp;
-                    Log(MessageLevel.Info, ex.Message);
-                }
-                else
-                {
-                    throw ex;
-                }
+                // Set nuget operation status to NoOp for telemetry event when package
+                // is already installed.
+                _status = NuGetOperationStatus.NoOp;
+                Log(MessageLevel.Info, ex.Message);
             }
         }
 

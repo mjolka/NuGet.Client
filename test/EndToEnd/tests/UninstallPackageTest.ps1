@@ -120,6 +120,9 @@ function Test-UninstallPackageWithNestedContentFiles {
 }
 
 function Test-SimpleFSharpUninstall {
+    [SkipTest('https://github.com/NuGet/Home/issues/11358')]
+    param($context)
+
     # Arrange
     $p = New-FSharpLibrary
     Build-Solution # wait for project nomination
@@ -651,8 +654,8 @@ function Test-UninstallSolutionPackageRemoveEntryFromProjectPackagesConfig
     Assert-AreEqual '<?xml version="1.0" encoding="utf-8"?>' $content[0]
     Assert-AreEqual '<packages>' $content[1]
     # Currently, when running NuGet api V2, we write the non-normalized version. So, replace 1.3.2.0 with 1.3.2. Related to bug: https://github.com/NuGet/Home/issues/577
-    Assert-AreEqual '  <package id="RazorGenerator.MsBuild" version="1.3.2" targetFramework="net45" />' $content[2].Replace("1.3.2.0", "1.3.2")
-    Assert-AreEqual '  <package id="SolutionLevelPkg" version="1.0.0" targetFramework="net45" />' $content[3]
+    Assert-AreEqual '  <package id="RazorGenerator.MsBuild" version="1.3.2" targetFramework="net48" />' $content[2].Replace("1.3.2.0", "1.3.2")
+    Assert-AreEqual '  <package id="SolutionLevelPkg" version="1.0.0" targetFramework="net48" />' $content[3]
     Assert-AreEqual '</packages>' $content[4]
 
     # Act
@@ -663,7 +666,7 @@ function Test-UninstallSolutionPackageRemoveEntryFromProjectPackagesConfig
     Assert-AreEqual 4 $content.Length
     Assert-AreEqual '<?xml version="1.0" encoding="utf-8"?>' $content[0]
     Assert-AreEqual '<packages>' $content[1]
-    Assert-AreEqual '  <package id="SolutionLevelPkg" version="1.0.0" targetFramework="net45" />' $content[2]
+    Assert-AreEqual '  <package id="SolutionLevelPkg" version="1.0.0" targetFramework="net48" />' $content[2]
     Assert-AreEqual '</packages>' $content[3]
 }
 
@@ -768,6 +771,7 @@ function Test-WebSiteSimpleUninstall
 
 function Test-UninstallPackageUseTargetFxPersistedInPackagesConfigToRemoveContentFiles
 {
+    [SkipTest('https://github.com/NuGet/Home/issues/11221')]
     param($context)
 
     # Arrange
@@ -800,6 +804,7 @@ function Test-UninstallPackageUseTargetFxPersistedInPackagesConfigToRemoveConten
 
 function Test-UninstallPackageUseTargetFxPersistedInPackagesConfigToRemoveAssemblies
 {
+    [SkipTest('https://github.com/NuGet/Home/issues/11221')]
     param($context)
 
     # Arrange
@@ -832,6 +837,7 @@ function Test-UninstallPackageUseTargetFxPersistedInPackagesConfigToRemoveAssemb
 
 function Test-UninstallPackageUseTargetFxPersistedInPackagesConfigToInvokeUninstallScript
 {
+    [SkipTest('https://github.com/NuGet/Home/issues/11221')]
     param($context)
 
     # Arrange
@@ -990,30 +996,6 @@ function UninstallPackageRemoveImportStatement
     Assert-NoPackage $p PackageWithImport
     Assert-NoProjectImport $p "..\packages\PackageWithImport.2.0.0\build\PackageWithImport.targets"
     Assert-NoProjectImport $p "..\packages\PackageWithImport.2.0.0\build\PackageWithImport.props"
-}
-
-function UninstallPackageFromJsWinStoreApplication
-{
-    if ((Get-VSVersion) -eq "10.0")
-    {
-        return
-    }
-
-    # Arrange
-    $p = New-JavaScriptApplication
-
-    Install-Package jQuery.Validation -IgnoreDependencies -ProjectName $p.Name
-    Assert-Package $p "jQuery.Validation"
-
-    # Act
-    Uninstall-Package jQuery.Validation -ProjectName $p.Name
-
-    # Assert
-    Assert-NoPackage $p "jQuery.Validation"
-
-    # verify the Scripts folder is completely removed
-    $scriptFolder = Get-ProjectItem $p "Scripts"
-    Assert-Null $scriptFolder
 }
 
 function Test-UninstallPackageWithContentInLicenseBlocks

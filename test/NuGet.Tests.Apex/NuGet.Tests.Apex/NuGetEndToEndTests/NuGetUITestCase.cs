@@ -37,7 +37,7 @@ namespace NuGet.Tests.Apex
             solutionService.SaveAll();
 
             // Act
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(project);
             uiwindow.SwitchTabToBrowse();
@@ -61,7 +61,7 @@ namespace NuGet.Tests.Apex
             solutionService.SaveAll();
 
             // Act
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(project);
             uiwindow.InstallPackageFromUI("newtonsoft.json", "9.0.1");
@@ -84,12 +84,12 @@ namespace NuGet.Tests.Apex
             solutionService.SaveAll();
 
             // Act
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(nuProject);
             uiwindow.InstallPackageFromUI("newtonsoft.json", "9.0.1");
             VisualStudio.SelectProjectInSolutionExplorer(project.Name);
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
 
             VisualStudio.ClearOutputWindow();
             var uiwindow2 = nugetTestService.GetUIWindowfromProject(project);
@@ -113,7 +113,7 @@ namespace NuGet.Tests.Apex
             solutionService.SaveAll();
 
             FileInfo packagesConfigFile = GetPackagesConfigFile(project);
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(project);
             uiwindow.InstallPackageFromUI("newtonsoft.json", "9.0.1");
@@ -145,7 +145,7 @@ namespace NuGet.Tests.Apex
             solutionService.SaveAll();
 
             // Act
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(project);
             uiwindow.InstallPackageFromUI("newtonsoft.json", "9.0.1");
@@ -159,15 +159,13 @@ namespace NuGet.Tests.Apex
         }
 
         [StaFact]
-        public async Task InstallPackageFromUI_PackageNamespace_WithSingleFeed_Match_Succeeds()
+        public async Task InstallPackageFromUI_PC_PackageSourceMapping_WithSingleFeed_Match_Succeeds()
         {
             // Arrange
             EnsureVisualStudioHost();
             var solutionService = VisualStudio.Get<SolutionService>();
             string solutionDirectory = CommonUtility.CreateSolutionDirectory(Directory.GetCurrentDirectory());
-            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
-
-            var privateRepositoryPath = Path.Combine(solutionService.ContainingDirectory, "PrivateRepository");
+            var privateRepositoryPath = Path.Combine(solutionDirectory, "PrivateRepository");
             Directory.CreateDirectory(privateRepositoryPath);
 
             var packageName = "Contoso.A";
@@ -175,7 +173,7 @@ namespace NuGet.Tests.Apex
 
             await CommonUtility.CreatePackageInSourceAsync(privateRepositoryPath, packageName, packageVersion);
 
-            // Create nuget.config with Package namespace filtering rules before project is created.
+            // Create nuget.config with Package source mapping filtering rules before project is created.
             CommonUtility.CreateConfigurationFile(Path.Combine(solutionDirectory, "NuGet.config"), $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
     <packageSources>
@@ -191,12 +189,14 @@ namespace NuGet.Tests.Apex
     </packageSourceMapping>
 </configuration>");
 
+            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
+
             var project = solutionService.AddProject(ProjectLanguage.CSharp, ProjectTemplate.ClassLibrary, ProjectTargetFramework.V46, "TestProject");
             VisualStudio.ClearOutputWindow();
             solutionService.SaveAll();
 
             // Act
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(project);
             uiwindow.InstallPackageFromUI("contoso.a", "1.0.0");
@@ -206,15 +206,14 @@ namespace NuGet.Tests.Apex
         }
 
         [StaFact]
-        public async Task InstallPackageToProjectsFromUI_PackageNamespace_WithSingleFeed_Match_Succeeds()
+        public async Task InstallPackageToProjectsFromUI_PC_PackageSourceMapping_WithSingleFeed_Match_Succeeds()
         {
             // Arrange
             EnsureVisualStudioHost();
             var solutionService = VisualStudio.Get<SolutionService>();
             string solutionDirectory = CommonUtility.CreateSolutionDirectory(Directory.GetCurrentDirectory());
-            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
+            var privateRepositoryPath = Path.Combine(solutionDirectory, "PrivateRepository");
 
-            var privateRepositoryPath = Path.Combine(solutionService.ContainingDirectory, "PrivateRepository");
             Directory.CreateDirectory(privateRepositoryPath);
 
             var packageName = "Contoso.A";
@@ -222,7 +221,7 @@ namespace NuGet.Tests.Apex
 
             await CommonUtility.CreatePackageInSourceAsync(privateRepositoryPath, packageName, packageVersion);
 
-            // Create nuget.config with Package namespace filtering rules before project is created.
+            // Create nuget.config with Package source mapping filtering rules before project is created.
             CommonUtility.CreateConfigurationFile(Path.Combine(solutionDirectory, "NuGet.config"), $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
     <packageSources>
@@ -238,17 +237,19 @@ namespace NuGet.Tests.Apex
     </packageSourceMapping>
 </configuration>");
 
+            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
+
             var project = solutionService.AddProject(ProjectLanguage.CSharp, ProjectTemplate.ClassLibrary, ProjectTargetFramework.V46, "TestProject");
             var nuProject = solutionService.AddProject(ProjectLanguage.CSharp, ProjectTemplate.ClassLibrary, ProjectTargetFramework.V46, "NuProject");
             solutionService.SaveAll();
 
             // Act
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(nuProject);
             uiwindow.InstallPackageFromUI("contoso.a", "1.0.0");
             VisualStudio.SelectProjectInSolutionExplorer(project.Name);
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
 
             VisualStudio.ClearOutputWindow();
             var uiwindow2 = nugetTestService.GetUIWindowfromProject(project);
@@ -260,52 +261,49 @@ namespace NuGet.Tests.Apex
         }
 
         [StaFact]
-        public async Task InstallPackageFromUI_PackageNamespace_WithMultiFeed_Succeed()
+        public async Task InstallPackageFromUI_PC_PackageSourceMapping_WithMultiFeed_Succeed()
         {
             // Arrange
             EnsureVisualStudioHost();
             var solutionService = VisualStudio.Get<SolutionService>();
             string solutionDirectory = CommonUtility.CreateSolutionDirectory(Directory.GetCurrentDirectory());
-            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
-
-            var packageName = "Contoso.A";
-            var packageVersion1 = "1.0.0";
-
-            var externalRepositoryPath = Path.Combine(solutionService.ContainingDirectory, "ExternalRepository");
+            var externalRepositoryPath = Path.Combine(solutionDirectory, "ExternalRepository");
             Directory.CreateDirectory(externalRepositoryPath);
-            await CommonUtility.CreatePackageInSourceAsync(externalRepositoryPath, packageName, packageVersion1);
-
-            var privateRepositoryPath = Path.Combine(solutionService.ContainingDirectory, "PrivateRepository");
+            var privateRepositoryPath = Path.Combine(solutionDirectory, "PrivateRepository");
             Directory.CreateDirectory(privateRepositoryPath);
-            await CommonUtility.CreatePackageInSourceAsync(privateRepositoryPath, packageName, packageVersion1);
 
-            // Create nuget.config with Package namespace filtering rules before project is created.
+            // Create nuget.config with Package source mapping filtering rules before project is created.
             CommonUtility.CreateConfigurationFile(Path.Combine(solutionDirectory, "NuGet.config"), $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
     <packageSources>
     <!--To inherit the global NuGet package sources remove the <clear/> line below -->
     <clear />
-    <add key=""ExternalRepository"" value=""{externalRepositoryPath}"" />
-    <add key=""PrivateRepository"" value=""{privateRepositoryPath}"" />
+    <add key=""encyclopaedia"" value=""{externalRepositoryPath}"" />
+    <add key=""encyclopædia"" value=""{privateRepositoryPath}"" />
     </packageSources>
     <packageSourceMapping>
-        <packageSource key=""externalRepository"">
+        <packageSource key=""encyclopaedia"">
             <package pattern=""External.*"" />
             <package pattern=""Others.*"" />
         </packageSource>
-        <packageSource key=""PrivateRepository"">
+        <packageSource key=""encyclopædia"">
             <package pattern=""Contoso.*"" />
             <package pattern=""Test.*"" />
         </packageSource>
     </packageSourceMapping>
 //</configuration>");
 
+            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
+            var packageName = "Contoso.A";
+            var packageVersion1 = "1.0.0";
+            await CommonUtility.CreatePackageInSourceAsync(externalRepositoryPath, packageName, packageVersion1);
+            await CommonUtility.CreatePackageInSourceAsync(privateRepositoryPath, packageName, packageVersion1);
             var project = solutionService.AddProject(ProjectLanguage.CSharp, ProjectTemplate.ClassLibrary, ProjectTargetFramework.V46, "TestProject");
             VisualStudio.ClearOutputWindow();
             solutionService.SaveAll();
 
             // Act
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(project);
 
@@ -318,25 +316,22 @@ namespace NuGet.Tests.Apex
         }
 
         [StaFact]
-        public async Task InstallPackageFromUI_PackageNamespace_WithMultiFeed_Fails()
+        public async Task InstallPackageFromUI_PC_PackageSourceMapping_WithMultiFeed_Fails()
         {
             // Arrange
             EnsureVisualStudioHost();
             var solutionService = VisualStudio.Get<SolutionService>();
             string solutionDirectory = CommonUtility.CreateSolutionDirectory(Directory.GetCurrentDirectory());
-            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
-
-            var externalRepositoryPath = Path.Combine(solutionService.ContainingDirectory, "ExternalRepository");
+            var externalRepositoryPath = Path.Combine(solutionDirectory, "ExternalRepository");
             Directory.CreateDirectory(externalRepositoryPath);
-
-            var privateRepositoryPath = Path.Combine(solutionService.ContainingDirectory, "PrivateRepository");
+            var privateRepositoryPath = Path.Combine(solutionDirectory, "PrivateRepository");
             Directory.CreateDirectory(privateRepositoryPath);
 
             var packageName = "Contoso.A";
             var packageVersion = "1.0.0";
             await CommonUtility.CreatePackageInSourceAsync(externalRepositoryPath, packageName, packageVersion);
 
-            // Create nuget.config with Package namespace filtering rules before project is created.
+            // Create nuget.config with Package source mapping filtering rules before project is created.
             CommonUtility.CreateConfigurationFile(Path.Combine(solutionDirectory, "NuGet.config"), $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
     <packageSources>
@@ -357,12 +352,14 @@ namespace NuGet.Tests.Apex
     </packageSourceMapping>
 </configuration>");
 
+            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
+
             var project = solutionService.AddProject(ProjectLanguage.CSharp, ProjectTemplate.ClassLibrary, ProjectTargetFramework.V46, "TestProject");
             VisualStudio.ClearOutputWindow();
             solutionService.SaveAll();
 
             // Act
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(project);
             uiwindow.InstallPackageFromUI("contoso.a", "1.0.0");
@@ -373,15 +370,13 @@ namespace NuGet.Tests.Apex
         }
 
         [StaFact]
-        public async Task UpdatePackageFromUI_PackageNamespace_WithSingleFeed_Succeeds()
+        public async Task UpdatePackageFromUI_PC_PackageSourceMapping_WithSingleFeed_Succeeds()
         {
             // Arrange
             EnsureVisualStudioHost();
             var solutionService = VisualStudio.Get<SolutionService>();
             string solutionDirectory = CommonUtility.CreateSolutionDirectory(Directory.GetCurrentDirectory());
-            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
-
-            var privateRepositoryPath = Path.Combine(solutionService.ContainingDirectory, "PrivateRepository");
+            var privateRepositoryPath = Path.Combine(solutionDirectory, "PrivateRepository");
             Directory.CreateDirectory(privateRepositoryPath);
 
             var packageName = "Contoso.A";
@@ -391,7 +386,7 @@ namespace NuGet.Tests.Apex
             await CommonUtility.CreatePackageInSourceAsync(privateRepositoryPath, packageName, packageVersionV1);
             await CommonUtility.CreatePackageInSourceAsync(privateRepositoryPath, packageName, packageVersionV2);
 
-            // Create nuget.config with Package namespace filtering rules before project is created.
+            // Create nuget.config with Package source mapping filtering rules before project is created.
             CommonUtility.CreateConfigurationFile(Path.Combine(solutionDirectory, "NuGet.config"), $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
     <packageSources>
@@ -407,12 +402,14 @@ namespace NuGet.Tests.Apex
     </packageSourceMapping>
 </configuration>");
 
+            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
+
             var project = solutionService.AddProject(ProjectLanguage.CSharp, ProjectTemplate.ClassLibrary, ProjectTargetFramework.V46, "TestProject");
             VisualStudio.ClearOutputWindow();
             solutionService.SaveAll();
 
             // Act
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(project);
             uiwindow.InstallPackageFromUI("contoso.a", "1.0.0");
@@ -427,29 +424,18 @@ namespace NuGet.Tests.Apex
 
 
         [StaFact]
-        public async Task UpdatePackageFromUI_PackageNamespace_WithMultiFeed_Succeed()
+        public async Task UpdatePackageFromUI_PC_PackageSourceMapping_WithMultiFeed_Succeed()
         {
             // Arrange
             EnsureVisualStudioHost();
             var solutionService = VisualStudio.Get<SolutionService>();
             string solutionDirectory = CommonUtility.CreateSolutionDirectory(Directory.GetCurrentDirectory());
-            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
-
-            var packageName = "Contoso.A";
-            var packageVersion1 = "1.0.0";
-            var packageVersion2 = "2.0.0";
-
-            var externalRepositoryPath = Path.Combine(solutionService.ContainingDirectory, "ExternalRepository");
+            var externalRepositoryPath = Path.Combine(solutionDirectory, "ExternalRepository");
             Directory.CreateDirectory(externalRepositoryPath);
-            await CommonUtility.CreatePackageInSourceAsync(externalRepositoryPath, packageName, packageVersion1);
-            await CommonUtility.CreatePackageInSourceAsync(externalRepositoryPath, packageName, packageVersion2);
-
-            var privateRepositoryPath = Path.Combine(solutionService.ContainingDirectory, "PrivateRepository");
+            var privateRepositoryPath = Path.Combine(solutionDirectory, "PrivateRepository");
             Directory.CreateDirectory(privateRepositoryPath);
-            await CommonUtility.CreatePackageInSourceAsync(privateRepositoryPath, packageName, packageVersion1);
-            await CommonUtility.CreatePackageInSourceAsync(privateRepositoryPath, packageName, packageVersion2);
 
-            // Create nuget.config with Package namespace filtering rules before project is created.
+            // Create nuget.config with Package source mapping filtering rules before project is created.
             CommonUtility.CreateConfigurationFile(Path.Combine(solutionDirectory, "NuGet.config"), $@"<?xml version=""1.0"" encoding=""utf-8""?>
 <configuration>
     <packageSources>
@@ -470,12 +456,21 @@ namespace NuGet.Tests.Apex
     </packageSourceMapping>
 //</configuration>");
 
+            solutionService.CreateEmptySolution("TestSolution", solutionDirectory);
+
+            var packageName = "Contoso.A";
+            var packageVersion1 = "1.0.0";
+            var packageVersion2 = "2.0.0";
+            await CommonUtility.CreatePackageInSourceAsync(externalRepositoryPath, packageName, packageVersion1);
+            await CommonUtility.CreatePackageInSourceAsync(externalRepositoryPath, packageName, packageVersion2);
+            await CommonUtility.CreatePackageInSourceAsync(privateRepositoryPath, packageName, packageVersion1);
+            await CommonUtility.CreatePackageInSourceAsync(privateRepositoryPath, packageName, packageVersion2);
             var project = solutionService.AddProject(ProjectLanguage.CSharp, ProjectTemplate.ClassLibrary, ProjectTargetFramework.V46, "TestProject");
             VisualStudio.ClearOutputWindow();
             solutionService.SaveAll();
 
             // Act
-            OpenNuGetPackageManagerWithDte();
+            CommonUtility.OpenNuGetPackageManagerWithDte(VisualStudio, XunitLogger);
             var nugetTestService = GetNuGetTestService();
             var uiwindow = nugetTestService.GetUIWindowfromProject(project);
 
@@ -488,34 +483,6 @@ namespace NuGet.Tests.Apex
 
             // Assert
             CommonUtility.AssertPackageInPackagesConfig(VisualStudio, project, "contoso.a", "2.0.0", XunitLogger);
-        }
-
-        private void OpenNuGetPackageManagerWithDte()
-        {
-            VisualStudio.ObjectModel.Solution.WaitForOperationsInProgress(TimeSpan.FromMinutes(3));
-            WaitForCommandAvailable("Project.ManageNuGetPackages", TimeSpan.FromMinutes(1));
-            VisualStudio.Dte.ExecuteCommand("Project.ManageNuGetPackages");
-        }
-
-        private void WaitForCommandAvailable(string commandName, TimeSpan timeout)
-        {
-            WaitForCommandAvailable(VisualStudio.Dte.Commands.Item(commandName), timeout);
-        }
-
-        private void WaitForCommandAvailable(Command cmd, TimeSpan timeout)
-        {
-            var stopWatch = new Stopwatch();
-            stopWatch.Start();
-            while (stopWatch.Elapsed < timeout)
-            {
-                if (cmd.IsAvailable)
-                {
-                    return;
-                }
-                System.Threading.Thread.Sleep(250);
-            }
-
-            XunitLogger.LogWarning($"Timed out waiting for {cmd.Name} to be available");
         }
 
         private static FileInfo GetPackagesConfigFile(ProjectTestExtension project)
