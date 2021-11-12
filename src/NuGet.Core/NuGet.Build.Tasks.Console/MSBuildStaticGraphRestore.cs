@@ -613,7 +613,7 @@ namespace NuGet.Build.Tasks.Console
 
                 targetFrameworkInformation.FrameworkReferences.AddRange(GetFrameworkReferences(msBuildProjectInstance));
 
-                if (isCpvmEnabled && targetFrameworkInformation.Dependencies.Any())
+                if (isCpvmEnabled)
                 {
                     targetFrameworkInformation.CentralPackageVersions.AddRange(GetCentralPackageVersions(msBuildProjectInstance));
                     LibraryDependency.ApplyCentralVersionInformation(targetFrameworkInformation.Dependencies, targetFrameworkInformation.CentralPackageVersions);
