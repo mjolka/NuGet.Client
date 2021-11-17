@@ -883,7 +883,7 @@ namespace NuGet.ProjectModel
         private static void ReadMSBuildMetadata(JsonTextReader jsonReader, PackageSpec packageSpec)
         {
             var centralPackageVersionsManagementEnabled = false;
-            var transitiveDependencyPinningEnabled = false;
+            var transitiveDependencyPinningDisabled = false;
             List<string> configFilePaths = null;
             var crossTargeting = false;
             List<string> fallbackFolders = null;
@@ -914,8 +914,8 @@ namespace NuGet.ProjectModel
                         centralPackageVersionsManagementEnabled = ReadNextTokenAsBoolOrFalse(jsonReader, packageSpec.FilePath);
                         break;
 
-                    case "transitiveDependencyPinningEnabled":
-                        transitiveDependencyPinningEnabled = ReadNextTokenAsBoolOrFalse(jsonReader, packageSpec.FilePath);
+                    case "transitiveDependencyPinningDisabled":
+                        transitiveDependencyPinningDisabled = ReadNextTokenAsBoolOrFalse(jsonReader, packageSpec.FilePath);
                         break;
 
                     case "configFilePaths":
@@ -1073,7 +1073,7 @@ namespace NuGet.ProjectModel
             }
 
             msbuildMetadata.CentralPackageVersionsEnabled = centralPackageVersionsManagementEnabled;
-            msbuildMetadata.TransitiveDependencyPinningEnabled = transitiveDependencyPinningEnabled;
+            msbuildMetadata.TransitiveDependencyPinningDisabled = transitiveDependencyPinningDisabled;
 
             if (configFilePaths != null)
             {

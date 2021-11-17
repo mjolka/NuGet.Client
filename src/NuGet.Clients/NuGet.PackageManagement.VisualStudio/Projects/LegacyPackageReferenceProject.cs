@@ -128,9 +128,9 @@ namespace NuGet.PackageManagement.VisualStudio
             return MSBuildStringUtility.IsTrue(await _vsProjectAdapter.GetPropertyValueAsync(ProjectBuildProperties.ManagePackageVersionsCentrally));
         }
 
-        private async Task<bool> IsTransitiveDependencyPinningEnabledAsync()
+        private async Task<bool> IsTransitiveDependencyPinningDisabledAsync()
         {
-            return MSBuildStringUtility.IsTrue(await _vsProjectAdapter.GetPropertyValueAsync(ProjectBuildProperties.EnableTransitiveDependencyPinning));
+            return MSBuildStringUtility.IsTrue(await _vsProjectAdapter.GetPropertyValueAsync(ProjectBuildProperties.DisableTransitiveDependencyPinning));
         }
 
         private async Task<string> GetSpecifiedAssemblyNameAsync()
@@ -424,7 +424,7 @@ namespace NuGet.PackageManagement.VisualStudio
             };
 
             bool isCpvmEnabled = await IsCentralPackageManagementVersionsEnabledAsync();
-            bool isTransitiveDependencyPinningEnabled = await IsTransitiveDependencyPinningEnabledAsync();
+            bool isTransitiveDependencyPinningDisabled = await IsTransitiveDependencyPinningDisabledAsync();
             if (isCpvmEnabled)
             {
                 // Add the central version information and merge the information to the package reference dependencies
@@ -499,7 +499,7 @@ namespace NuGet.PackageManagement.VisualStudio
                         await _vsProjectAdapter.GetNuGetLockFilePathAsync(),
                         await _vsProjectAdapter.IsRestoreLockedAsync()),
                     CentralPackageVersionsEnabled = isCpvmEnabled,
-                    TransitiveDependencyPinningEnabled = isTransitiveDependencyPinningEnabled,
+                    TransitiveDependencyPinningDisabled = isTransitiveDependencyPinningDisabled,
                 }
             };
         }

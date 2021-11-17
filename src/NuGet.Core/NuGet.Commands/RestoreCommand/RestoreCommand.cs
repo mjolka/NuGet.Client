@@ -70,7 +70,7 @@ namespace NuGet.Commands
 
         // core restore data names
         private const string GenerateRestoreGraphDuration = nameof(GenerateRestoreGraphDuration);
-        private const string IsTransitiveDependencyPinningEnabled = "IsTransitiveDependencyPinningEnabled";
+        private const string IsTransitiveDependencyPinningDisabled = nameof(IsTransitiveDependencyPinningDisabled);
         private const string CreateRestoreTargetGraphDuration = nameof(CreateRestoreTargetGraphDuration);
         private const string CreateAdditionalRestoreTargetGraphDuration = nameof(CreateAdditionalRestoreTargetGraphDuration);
         private const string GenerateAssetsFileDuration = nameof(GenerateAssetsFileDuration);
@@ -126,8 +126,8 @@ namespace NuGet.Commands
                 var isCpvmEnabled = _request.Project.RestoreMetadata?.CentralPackageVersionsEnabled ?? false;
                 telemetry.TelemetryEvent[IsCentralVersionManagementEnabled] = isCpvmEnabled;
 
-                var isTransitiveDependencyPinningEnabled = _request.Project.RestoreMetadata?.TransitiveDependencyPinningEnabled ?? false;
-                telemetry.TelemetryEvent[IsTransitiveDependencyPinningEnabled] = isTransitiveDependencyPinningEnabled;
+                var isTransitiveDependencyPinningDisabled = _request.Project.RestoreMetadata?.TransitiveDependencyPinningDisabled ?? false;
+                telemetry.TelemetryEvent[IsTransitiveDependencyPinningDisabled] = isTransitiveDependencyPinningDisabled;
 
                 if (isCpvmEnabled)
                 {

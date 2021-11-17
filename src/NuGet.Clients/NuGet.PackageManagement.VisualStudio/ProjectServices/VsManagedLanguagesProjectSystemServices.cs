@@ -325,11 +325,6 @@ namespace NuGet.PackageManagement.VisualStudio
             return MSBuildStringUtility.IsTrue(await _vsProjectAdapter.GetPropertyValueAsync(ProjectBuildProperties.ManagePackageVersionsCentrally));
         }
 
-        private async Task<bool> IsTransitiveDependencyPinningEnabledAsync()
-        {
-            return MSBuildStringUtility.IsTrue(await _vsProjectAdapter.GetPropertyValueAsync(ProjectBuildProperties.EnableTransitiveDependencyPinning));
-        }
-
         private class ProjectReference
         {
             public ProjectReference(string uniqueName, Array metadataElements, Array metadataValues)

@@ -1897,7 +1897,7 @@ namespace NuGet.Commands.Test
         }
 
         [Fact]
-        public async Task RestoreRunner_ExecuteAndCommit_ProjectAssetsIsNotCommitedIfNotChanged()
+        public async Task RestoreRunner_ExecuteAndCommit_ProjectAssetsIsNotCommittedIfNotChanged()
         {
             var assetsFileName = "project.assets.json";
             using (var pathContext = new SimpleTestPathContext())
@@ -1912,8 +1912,7 @@ namespace NuGet.Commands.Test
                   ""version"": ""1.0.0"",
                     ""restore"": {
                                     ""projectUniqueName"": ""TestProject"",
-                                    ""centralPackageVersionsManagementEnabled"": true,
-                                    ""transitiveDependencyPinningEnabled"": true
+                                    ""centralPackageVersionsManagementEnabled"": true
                     },
                   ""frameworks"": {
                     ""net472"": {

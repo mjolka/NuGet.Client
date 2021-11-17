@@ -789,7 +789,7 @@ namespace NuGet.Build.Tasks.Console
 
             var projectStyleOrNull = BuildTasksUtility.GetProjectRestoreStyleFromProjectProperty(project.GetProperty("RestoreProjectStyle"));
             var isCpvmEnabled = IsCentralVersionsManagementEnabled(project, projectStyleOrNull);
-            var isTransitiveDependencyPinningEnabled = IsTransitiveDependencyPinningEnabled(project, projectStyleOrNull);
+            var isTransitiveDependencyPinningDisabled = IsTransitiveDependencyPinningDisabled(project, projectStyleOrNull);
             var targetFrameworkInfos = GetTargetFrameworkInfos(projectsByTargetFramework, isCpvmEnabled);
 
             var projectStyleResult = BuildTasksUtility.GetProjectRestoreStyle(
@@ -832,7 +832,7 @@ namespace NuGet.Build.Tasks.Console
                     SkipContentFileWrite = IsLegacyProject(project),
                     ValidateRuntimeAssets = project.IsPropertyTrue("ValidateRuntimeIdentifierCompatibility"),
                     CentralPackageVersionsEnabled = isCpvmEnabled && projectStyle == ProjectStyle.PackageReference,
-                    TransitiveDependencyPinningEnabled = isTransitiveDependencyPinningEnabled,
+                    TransitiveDependencyPinningDisabled = isTransitiveDependencyPinningDisabled,
                 };
             }
 
@@ -1024,12 +1024,13 @@ namespace NuGet.Build.Tasks.Console
             return false;
         }
 
-        internal static bool IsTransitiveDependencyPinningEnabled(IMSBuildProject project, ProjectStyle? projectStyle)
+        internal static bool IsTransitiveDependencyPinningDisabled(IMSBuildProject project, ProjectStyle? projectStyle)
         {
             if (!projectStyle.HasValue || (projectStyle.Value == ProjectStyle.PackageReference))
             {
-                return StringComparer.OrdinalIgnoreCase.Equals(project.GetProperty("_TransitiveDependencyPinningEnabled"), bool.TrueString);
+                return StringComparer.OrdinalIgnoreCase.Equals(project.GetProperty("_TransitiveDependencyPinningDisabled"), bool.TrueString);
             }
+
             return false;
         }
 

@@ -115,7 +115,7 @@ namespace NuGet.ProjectModel
 
         public bool CentralPackageVersionsEnabled { get; set; }
 
-        public bool TransitiveDependencyPinningEnabled { get; set; }
+        public bool TransitiveDependencyPinningDisabled { get; set; }
 
         public override int GetHashCode()
         {
@@ -168,7 +168,7 @@ namespace NuGet.ProjectModel
             hashCode.AddObject(ProjectWideWarningProperties);
             hashCode.AddObject(RestoreLockProperties);
             hashCode.AddObject(CentralPackageVersionsEnabled);
-            hashCode.AddObject(TransitiveDependencyPinningEnabled);
+            hashCode.AddObject(TransitiveDependencyPinningDisabled);
 
             return hashCode.CombinedHash;
         }
@@ -210,7 +210,7 @@ namespace NuGet.ProjectModel
                    EqualityUtility.EqualsWithNullCheck(ProjectWideWarningProperties, other.ProjectWideWarningProperties) &&
                    EqualityUtility.EqualsWithNullCheck(RestoreLockProperties, other.RestoreLockProperties) &&
                    EqualityUtility.EqualsWithNullCheck(CentralPackageVersionsEnabled, other.CentralPackageVersionsEnabled) &&
-                   EqualityUtility.EqualsWithNullCheck(TransitiveDependencyPinningEnabled, other.TransitiveDependencyPinningEnabled);
+                   EqualityUtility.EqualsWithNullCheck(TransitiveDependencyPinningDisabled, other.TransitiveDependencyPinningDisabled);
         }
 
         public virtual ProjectRestoreMetadata Clone()
@@ -243,7 +243,7 @@ namespace NuGet.ProjectModel
             clone.ProjectWideWarningProperties = ProjectWideWarningProperties?.Clone();
             clone.RestoreLockProperties = RestoreLockProperties?.Clone();
             clone.CentralPackageVersionsEnabled = CentralPackageVersionsEnabled;
-            clone.TransitiveDependencyPinningEnabled = TransitiveDependencyPinningEnabled;
+            clone.TransitiveDependencyPinningDisabled = TransitiveDependencyPinningDisabled;
         }
     }
 }

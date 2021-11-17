@@ -161,7 +161,7 @@ namespace NuGet.Commands
             {
                 ProjectStyle restoreType = GetProjectStyle(specItem);
                 bool isCpvmEnabled = IsCentralVersionsManagementEnabled(specItem, restoreType);
-                bool isTransitiveDependencyPinningEnabled = IsTransitiveDependencyPinningEnabled(specItem, restoreType);
+                bool isTransitiveDependencyPinningDisabled = IsTransitiveDependencyPinningDisabled(specItem, restoreType);
 
                 // Get base spec
                 if (restoreType == ProjectStyle.ProjectJson)
@@ -292,7 +292,7 @@ namespace NuGet.Commands
                 }
 
                 result.RestoreMetadata.CentralPackageVersionsEnabled = isCpvmEnabled;
-                result.RestoreMetadata.TransitiveDependencyPinningEnabled = isTransitiveDependencyPinningEnabled;
+                result.RestoreMetadata.TransitiveDependencyPinningDisabled = isTransitiveDependencyPinningDisabled;
             }
 
             return result;
@@ -1009,9 +1009,9 @@ namespace NuGet.Commands
             return IsPropertyTrue(projectSpecItem, "_CentralPackageVersionsEnabled") && projectStyle == ProjectStyle.PackageReference;
         }
 
-        internal static bool IsTransitiveDependencyPinningEnabled(IMSBuildItem projectSpecItem, ProjectStyle projectStyle)
+        internal static bool IsTransitiveDependencyPinningDisabled(IMSBuildItem projectSpecItem, ProjectStyle projectStyle)
         {
-            return IsPropertyTrue(projectSpecItem, "_TransitiveDependencyPinningEnabled") && projectStyle == ProjectStyle.PackageReference;
+            return IsPropertyTrue(projectSpecItem, "_TransitiveDependencyPinningDisabled") || projectStyle != ProjectStyle.PackageReference;
         }
 
         private static void AddCentralPackageVersions(PackageSpec spec, IEnumerable<IMSBuildItem> items)

@@ -233,7 +233,7 @@ namespace NuGet.SolutionRestoreManager
         internal static PackageSpec ToPackageSpec(ProjectNames projectNames, IEnumerable TargetFrameworks, string originalTargetFrameworkstr, string msbuildProjectExtensionsPath)
         {
             var cpvmEnabled = VSNominationUtilities.IsCentralPackageVersionManagementEnabled(TargetFrameworks);
-            var transitiveDependencyPinningEnabled = VSNominationUtilities.IsTransitiveDependencyPinningEnabled(TargetFrameworks);
+            var transitiveDependencyPinningDisabled = VSNominationUtilities.IsTransitiveDependencyPinningDisabled(TargetFrameworks);
 
             var tfis = TargetFrameworks
                 .Cast<IVsTargetFrameworkInfo>()
@@ -292,7 +292,7 @@ namespace NuGet.SolutionRestoreManager
                     CacheFilePath = NoOpRestoreUtilities.GetProjectCacheFilePath(cacheRoot: outputPath),
                     RestoreLockProperties = VSNominationUtilities.GetRestoreLockProperties(TargetFrameworks),
                     CentralPackageVersionsEnabled = cpvmEnabled,
-                    TransitiveDependencyPinningEnabled = transitiveDependencyPinningEnabled,
+                    TransitiveDependencyPinningDisabled = transitiveDependencyPinningDisabled,
                 },
                 RuntimeGraph = VSNominationUtilities.GetRuntimeGraph(TargetFrameworks),
                 RestoreSettings = new ProjectRestoreSettings() { HideWarningsAndErrors = true }
@@ -414,7 +414,7 @@ namespace NuGet.SolutionRestoreManager
                 _projectSystemCache.AddProjectRestoreInfoSource(projectNames, projectRestoreInfoSource);
             }
 
-            // If the solution is not yet fully initialized, failed inits are *acceptable*. 
+            // If the solution is not yet fully initialized, failed inits are *acceptable*.
             foreach (var source in failedInits)
             {
                 _projectRestoreInfoSources.Enqueue(source);

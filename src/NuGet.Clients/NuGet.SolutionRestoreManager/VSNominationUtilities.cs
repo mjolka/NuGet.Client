@@ -288,9 +288,9 @@ namespace NuGet.SolutionRestoreManager
             return GetSingleNonEvaluatedPropertyOrNull(tfms, ProjectBuildProperties.ManagePackageVersionsCentrally, MSBuildStringUtility.IsTrue);
         }
 
-        internal static bool IsTransitiveDependencyPinningEnabled(IEnumerable tfms)
+        internal static bool IsTransitiveDependencyPinningDisabled(IEnumerable tfms)
         {
-            return GetSingleNonEvaluatedPropertyOrNull(tfms, ProjectBuildProperties.EnableTransitiveDependencyPinning, MSBuildStringUtility.IsTrue);
+            return GetSingleNonEvaluatedPropertyOrNull(tfms, ProjectBuildProperties.DisableTransitiveDependencyPinning, MSBuildStringUtility.IsTrue);
         }
 
         private static NuGetFramework GetToolFramework(IEnumerable targetFrameworks)

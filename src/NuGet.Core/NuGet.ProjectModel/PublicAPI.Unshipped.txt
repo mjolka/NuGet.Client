@@ -1,5 +1,5 @@
-NuGet.ProjectModel.ProjectRestoreMetadata.TransitiveDependencyPinningEnabled.get -> bool
-NuGet.ProjectModel.ProjectRestoreMetadata.TransitiveDependencyPinningEnabled.set -> void
+NuGet.ProjectModel.ProjectRestoreMetadata.TransitiveDependencyPinningDisabled.get -> bool
+NuGet.ProjectModel.ProjectRestoreMetadata.TransitiveDependencyPinningDisabled.set -> void
 static readonly NuGet.ProjectModel.BuildAction.AndroidAsset -> NuGet.ProjectModel.BuildAction
 static readonly NuGet.ProjectModel.BuildAction.AndroidResource -> NuGet.ProjectModel.BuildAction
 static readonly NuGet.ProjectModel.BuildAction.ApplicationDefinition -> NuGet.ProjectModel.BuildAction

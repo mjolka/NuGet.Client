@@ -158,7 +158,7 @@ namespace NuGet.Commands.Test
             updated.RestoreMetadata.ProjectPath = projectPath;
             updated.RestoreMetadata.ConfigFilePaths = new List<string>();
             updated.RestoreMetadata.CentralPackageVersionsEnabled = spec.RestoreMetadata?.CentralPackageVersionsEnabled ?? false;
-            updated.RestoreMetadata.TransitiveDependencyPinningEnabled = spec.RestoreMetadata?.TransitiveDependencyPinningEnabled ?? false;
+            updated.RestoreMetadata.TransitiveDependencyPinningDisabled = spec.RestoreMetadata?.TransitiveDependencyPinningDisabled ?? false;
 
             // Update the Target Alias.
             foreach (var framework in updated.TargetFrameworks)

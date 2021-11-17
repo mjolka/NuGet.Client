@@ -5246,11 +5246,6 @@ namespace ClassLibrary
                         "ManagePackageVersionsCentrally",
                         "true");
 
-                    ProjectFileUtils.AddProperty(
-                        xml,
-                        "EnableTransitiveDependencyPinning",
-                        "true");
-
                     ProjectFileUtils.WriteXmlToFile(xml, stream);
                 }
 

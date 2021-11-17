@@ -177,7 +177,7 @@ namespace NuGet.ProjectModel
             SetValueIfTrue(writer, "validateRuntimeAssets", msbuildMetadata.ValidateRuntimeAssets);
             SetValueIfTrue(writer, "skipContentFileWrite", msbuildMetadata.SkipContentFileWrite);
             SetValueIfTrue(writer, "centralPackageVersionsManagementEnabled", msbuildMetadata.CentralPackageVersionsEnabled);
-            SetValueIfTrue(writer, "transitiveDependencyPinningEnabled", msbuildMetadata.TransitiveDependencyPinningEnabled);
+            SetValueIfTrue(writer, "transitiveDependencyPinningDisabled", msbuildMetadata.TransitiveDependencyPinningDisabled);
         }
 
 

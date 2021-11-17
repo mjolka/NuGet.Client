@@ -9823,7 +9823,6 @@ namespace NuGet.CommandLine.Test
                    pathContext.SolutionRoot,
                    NuGetFramework.Parse("netcoreapp2.0"));
                 projectA.Properties.Add("ManagePackageVersionsCentrally", "true");
-                projectA.Properties.Add("EnableTransitiveDependencyPinning", "true");
 
                 // the package references defined in the project should not have version
                 var packageBNoVersion = createTestPackage("B", null, packagesForProject);

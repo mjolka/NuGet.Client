@@ -52,6 +52,6 @@ namespace NuGet.ProjectManagement
         public const string RuntimeIdentifierGraphPath = nameof(RuntimeIdentifierGraphPath);
         public const string ManagePackageVersionsCentrally = nameof(ManagePackageVersionsCentrally);
         public const string AssemblyName = nameof(AssemblyName);
-        public const string EnableTransitiveDependencyPinning = nameof(EnableTransitiveDependencyPinning);
+        public const string DisableTransitiveDependencyPinning = nameof(DisableTransitiveDependencyPinning);
     }
 }

@@ -1664,7 +1664,6 @@ namespace NuGet.Commands.Test
                     ""restore"": {
                                     ""projectUniqueName"": ""TestProject"",
                                     ""centralPackageVersionsManagementEnabled"": true,
-                                    ""transitiveDependencyPinningEnabled"": true
                     },
                   ""frameworks"": {
                     ""net472"": {
@@ -2110,7 +2109,7 @@ namespace NuGet.Commands.Test
                     .Build();
 
                 projectSpec.RestoreMetadata.CentralPackageVersionsEnabled = true;
-                projectSpec.RestoreMetadata.TransitiveDependencyPinningEnabled = transitivePinning;
+                projectSpec.RestoreMetadata.TransitiveDependencyPinningDisabled = !transitivePinning;
 
                 var sources = new[] { new PackageSource(packageSource.FullName) }
                     .Select(source => Repository.Factory.GetCoreV3(source))
@@ -2213,7 +2212,7 @@ namespace NuGet.Commands.Test
             projectInformationEvent["OperationId"].Should().NotBeNull();
             projectInformationEvent["Duration"].Should().NotBeNull();
             projectInformationEvent["PackageSourceMapping.IsMappingEnabled"].Should().Be(false);
-            projectInformationEvent["IsTransitiveDependencyPinningEnabled"].Should().Be(false);
+            projectInformationEvent["IsTransitiveDependencyPinningDisabled"].Should().Be(false);
         }
 
         [Fact]
@@ -2286,7 +2285,7 @@ namespace NuGet.Commands.Test
             projectInformationEvent["NoOpRestoreOutputEvaluationDuration"].Should().NotBeNull();
             projectInformationEvent["NoOpReplayLogsDuration"].Should().NotBeNull();
             projectInformationEvent["PackageSourceMapping.IsMappingEnabled"].Should().Be(false);
-            projectInformationEvent["IsTransitiveDependencyPinningEnabled"].Should().Be(false);
+            projectInformationEvent["IsTransitiveDependencyPinningDisabled"].Should().Be(false);
         }
 
         [Fact]
@@ -2350,7 +2349,6 @@ namespace NuGet.Commands.Test
             projectInformationEvent["TotalUniquePackagesCount"].Should().Be(2);
             projectInformationEvent["NewPackagesInstalledCount"].Should().Be(1);
             projectInformationEvent["PackageSourceMapping.IsMappingEnabled"].Should().Be(false);
-            projectInformationEvent["IsTransitiveDependencyPinningEnabled"].Should().Be(false);
         }
 
         /// A 1.0.0 -> C 1.0.0 -> D 1.1.0
@@ -2454,7 +2452,7 @@ namespace NuGet.Commands.Test
             {
                 ProjectUniqueName = projectName,
                 CentralPackageVersionsEnabled = cpvmEnabled,
-                TransitiveDependencyPinningEnabled = cpvmEnabled,
+                TransitiveDependencyPinningDisabled = false,
                 ProjectStyle = ProjectStyle.PackageReference,
                 TargetFrameworks = new List<ProjectRestoreMetadataFrameworkInfo>() { new ProjectRestoreMetadataFrameworkInfo(framework) },
                 OutputPath = Path.Combine(projectPath, "obj"),

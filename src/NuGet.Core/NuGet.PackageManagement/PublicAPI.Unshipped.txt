@@ -2,4 +2,4 @@ NuGet.PackageManagement.GatherContext.GatherContext(NuGet.Configuration.PackageS
 NuGet.PackageManagement.GatherContext.PackageSourceMapping.get -> NuGet.Configuration.PackageSourceMapping
 const NuGet.ProjectManagement.ProjectBuildProperties.AssemblyName = "AssemblyName" -> string
 const NuGet.ProjectManagement.ProjectBuildProperties.CLRSupport = "CLRSupport" -> string
-const NuGet.ProjectManagement.ProjectBuildProperties.EnableTransitiveDependencyPinning = "EnableTransitiveDependencyPinning" -> string
+const NuGet.ProjectManagement.ProjectBuildProperties.DisableTransitiveDependencyPinning = "DisableTransitiveDependencyPinning" -> string
