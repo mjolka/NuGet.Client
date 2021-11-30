@@ -75,7 +75,7 @@ stages:
     displayName: Run Static Source Analysis
     timeoutInMinutes: 15
     pool:
-      name: VSEngSS-MicroBuild2019-1ES
+      vmImage: windows-latest
     steps:
     - template: Static_Source_Analysis.yml
       parameters:
@@ -175,7 +175,7 @@ stages:
       SDKVersionForBuild: $[stageDependencies.Initialize.Initialize_Build.outputs['getSDKVersionForBuild.SDKVersionForBuild']]
     condition: "and(succeeded(),eq(variables['RunCrossFrameworkTestsOnWindows'], 'true')) "
     pool:
-      name: VSEngSS-MicroBuild2019-1ES
+      vmImage: windows-latest
     steps:
     - template: CrossFramework_Tests_On_Windows.yml
 
