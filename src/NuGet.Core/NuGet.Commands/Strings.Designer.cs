@@ -1709,6 +1709,15 @@ namespace NuGet.Commands {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to PackageSourceMapping is enabled, the following source(s) were not considered: {0}..
+        /// </summary>
+        internal static string Log_SourceMappingEnabledNoMatchingPackageSources {
+            get {
+                return ResourceManager.GetString("Log_SourceMappingEnabledNoMatchingPackageSources", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The targets file for {0} at location {1} does not exist, no-op is not possible. Continuing restore..
         /// </summary>
         internal static string Log_TargetsFileNotOnDisk {
@@ -2128,6 +2137,15 @@ namespace NuGet.Commands {
         internal static string Source_InvalidFormatValue {
             get {
                 return ResourceManager.GetString("Source_InvalidFormatValue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Versions from {0} were not considered.
+        /// </summary>
+        internal static string SourceNotConsidered {
+            get {
+                return ResourceManager.GetString("SourceNotConsidered", resourceCulture);
             }
         }
         
@@ -2618,15 +2636,6 @@ namespace NuGet.Commands {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to &apos;{0}&apos; was resolved as a dependency of &apos;{1}&apos;, but the dependency is using &apos;Xamarin.iOS&apos; while &apos;{1}&apos; is using &apos;{2}&apos; as its TargetFramework. There might be compatibility issues when MacCatalyst projects depend on Xamarin.iOS projects..
-        /// </summary>
-        internal static string Warning_MacCatalystXamarinIOSCompat {
-            get {
-                return ResourceManager.GetString("Warning_MacCatalystXamarinIOSCompat", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to {0} depends on {1} but {2} was not found. An approximate best match of {3} was resolved..
         /// </summary>
         internal static string Warning_MinVersionDoesNotExist {
@@ -2695,6 +2704,15 @@ namespace NuGet.Commands {
         internal static string Warning_ProjectDependencyMissingLowerBound {
             get {
                 return ResourceManager.GetString("Warning_ProjectDependencyMissingLowerBound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Project dependency &apos;{0}&apos; does not specify a version. Include a version for the dependency to ensure consistent restore results..
+        /// </summary>
+        internal static string Warning_ProjectDependencyMissingVersion {
+            get {
+                return ResourceManager.GetString("Warning_ProjectDependencyMissingVersion", resourceCulture);
             }
         }
         
