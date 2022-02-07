@@ -123,6 +123,11 @@ namespace NuGet.ProjectModel
         /// </summary>
         public bool CentralPackageVersionOverrideDisabled { get; set; }
 
+        /// <summary>
+        /// Gets or sets a valudate indicating whether or not transitive package versions are overriden if a version is specified but a top-level dependency is not declared.
+        /// </summary>
+        public bool CentralTransitivePackageVersionOverrideEnabled { get; set; }
+
         public override int GetHashCode()
         {
             var hashCode = new HashCodeCombiner();
@@ -175,6 +180,7 @@ namespace NuGet.ProjectModel
             hashCode.AddObject(RestoreLockProperties);
             hashCode.AddObject(CentralPackageVersionsEnabled);
             hashCode.AddObject(CentralPackageVersionOverrideDisabled);
+            hashCode.AddObject(CentralTransitivePackageVersionOverrideEnabled);
 
             return hashCode.CombinedHash;
         }
@@ -217,6 +223,7 @@ namespace NuGet.ProjectModel
                    EqualityUtility.EqualsWithNullCheck(RestoreLockProperties, other.RestoreLockProperties) &&
                    EqualityUtility.EqualsWithNullCheck(CentralPackageVersionsEnabled, other.CentralPackageVersionsEnabled) &&
                    EqualityUtility.EqualsWithNullCheck(CentralPackageVersionOverrideDisabled, other.CentralPackageVersionOverrideDisabled);
+            EqualityUtility.EqualsWithNullCheck(CentralTransitivePackageVersionOverrideEnabled, other.CentralTransitivePackageVersionOverrideEnabled);
         }
 
         public virtual ProjectRestoreMetadata Clone()
@@ -250,6 +257,7 @@ namespace NuGet.ProjectModel
             clone.RestoreLockProperties = RestoreLockProperties?.Clone();
             clone.CentralPackageVersionsEnabled = CentralPackageVersionsEnabled;
             clone.CentralPackageVersionOverrideDisabled = CentralPackageVersionOverrideDisabled;
+            clone.CentralTransitivePackageVersionOverrideEnabled = CentralTransitivePackageVersionOverrideEnabled;
         }
     }
 }

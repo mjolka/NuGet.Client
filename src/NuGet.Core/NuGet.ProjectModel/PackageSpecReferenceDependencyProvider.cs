@@ -339,8 +339,8 @@ namespace NuGet.ProjectModel
 
                 dependencies.AddRange(targetFrameworkInfo.Dependencies);
 
-#if enableCPVMTransitivePinning
-                if (packageSpec.RestoreMetadata?.CentralPackageVersionsEnabled == true)
+                System.Diagnostics.Debugger.Launch();
+                if (packageSpec.RestoreMetadata != null && packageSpec.RestoreMetadata.CentralPackageVersionsEnabled && packageSpec.RestoreMetadata.CentralTransitivePackageVersionOverrideEnabled)
                 {
                     var dependencyNamesSet = new HashSet<string>(targetFrameworkInfo.Dependencies.Select(d => d.Name), StringComparer.OrdinalIgnoreCase);
                     dependencies.AddRange(targetFrameworkInfo.CentralPackageVersions
@@ -352,7 +352,7 @@ namespace NuGet.ProjectModel
                             ReferenceType = LibraryDependencyReferenceType.None,
                         }));
                 }
-#endif
+
                 // Remove all framework assemblies
                 dependencies.RemoveAll(d => d.LibraryRange.TypeConstraint == LibraryDependencyTarget.Reference);
 

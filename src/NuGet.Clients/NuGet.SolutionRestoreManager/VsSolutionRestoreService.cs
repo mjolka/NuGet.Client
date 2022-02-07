@@ -348,6 +348,7 @@ namespace NuGet.SolutionRestoreManager
                     RestoreLockProperties = VSNominationUtilities.GetRestoreLockProperties(TargetFrameworks),
                     CentralPackageVersionsEnabled = cpvmEnabled,
                     CentralPackageVersionOverrideDisabled = VSNominationUtilities.IsCentralPackageVersionOverrideDisabled(TargetFrameworks)
+                    CentralTransitivePackageVersionOverrideEnabled = VSNominationUtilities.IsCentralTransitivePackageVersionOverrideEnabled(TargetFrameworks)
                 },
                 RuntimeGraph = VSNominationUtilities.GetRuntimeGraph(TargetFrameworks),
                 RestoreSettings = new ProjectRestoreSettings() { HideWarningsAndErrors = true }

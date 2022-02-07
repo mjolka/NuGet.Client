@@ -161,7 +161,7 @@ namespace NuGet.Commands
             {
                 ProjectStyle restoreType = GetProjectStyle(specItem);
 
-                (bool isCentralPackageManagementEnabled, bool isCentralPackageVersionOverrideDisabled) = GetCentralPackageManagementSettings(specItem, restoreType);
+                (bool isCentralPackageManagementEnabled, bool isCentralPackageVersionOverrideDisabled, , bool isCentralTransitivePackageVersionOverrideEnabled) = GetCentralPackageManagementSettings(specItem, restoreType);
 
                 // Get base spec
                 if (restoreType == ProjectStyle.ProjectJson)
@@ -293,6 +293,7 @@ namespace NuGet.Commands
 
                 result.RestoreMetadata.CentralPackageVersionsEnabled = isCentralPackageManagementEnabled;
                 result.RestoreMetadata.CentralPackageVersionOverrideDisabled = isCentralPackageVersionOverrideDisabled;
+                result.RestoreMetadata.CentralTransitivePackageVersionOverrideEnabled = isCentralTransitivePackageVersionOverrideEnabled;
             }
 
             return result;
@@ -1024,9 +1025,9 @@ namespace NuGet.Commands
             return restoreType;
         }
 
-        internal static (bool IsEnabled, bool IsVersionOverrideDisabled) GetCentralPackageManagementSettings(IMSBuildItem projectSpecItem, ProjectStyle projectStyle)
+        internal static (bool IsEnabled, bool IsVersionOverrideDisabled, , bool IsTransitiveVersionOverrideEnabled) GetCentralPackageManagementSettings(IMSBuildItem projectSpecItem, ProjectStyle projectStyle)
         {
-            return (IsPropertyTrue(projectSpecItem, "_CentralPackageVersionsEnabled") && projectStyle == ProjectStyle.PackageReference, IsPropertyFalse(projectSpecItem, "CentralPackageVersionOverrideEnabled"));
+            return (IsPropertyTrue(projectSpecItem, "_CentralPackageVersionsEnabled") && projectStyle == ProjectStyle.PackageReference, IsPropertyFalse(projectSpecItem, "CentralPackageVersionOverrideEnabled"), IsPropertyTrue(projectSpecItem, "CentralTransitivePackageVersionOverrideEnabled"));
         }
 
         private static void AddCentralPackageVersions(PackageSpec spec, IEnumerable<IMSBuildItem> items)

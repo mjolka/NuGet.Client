@@ -293,6 +293,11 @@ namespace NuGet.SolutionRestoreManager
             return GetSingleNonEvaluatedPropertyOrNull(tfms, ProjectBuildProperties.EnablePackageVersionOverride, MSBuildStringUtility.IsFalse);
         }
 
+        internal static bool IsCentralTransitivePackageVersionOverrideEnabled(IEnumerable tfms)
+        {
+            return GetSingleNonEvaluatedPropertyOrNull(tfms, ProjectBuildProperties.EnableTransitivePackageVersionOverride, MSBuildStringUtility.IsTrue);
+        }
+
         private static NuGetFramework GetToolFramework(IEnumerable targetFrameworks)
         {
             return GetSingleNonEvaluatedPropertyOrNull(

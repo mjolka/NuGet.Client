@@ -133,6 +133,11 @@ namespace NuGet.PackageManagement.VisualStudio
             return MSBuildStringUtility.IsFalse(await _vsProjectAdapter.GetPropertyValueAsync(ProjectBuildProperties.EnablePackageVersionOverride));
         }
 
+        private async Task<bool> IsCentralPackageTransitiveVersionOverrideEnabledAsync()
+        {
+            return !MSBuildStringUtility.IsFalse(await _vsProjectAdapter.GetPropertyValueAsync(ProjectBuildProperties.EnableTransitivePackageVersionOverride));
+        }
+
         private async Task<string> GetSpecifiedAssemblyNameAsync()
         {
             return await _vsProjectAdapter.GetPropertyValueAsync(ProjectBuildProperties.AssemblyName);
