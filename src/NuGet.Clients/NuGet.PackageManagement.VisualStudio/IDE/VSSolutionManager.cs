@@ -396,11 +396,8 @@ namespace NuGet.PackageManagement.VisualStudio
 
             foreach (Project project in await EnvDTESolutionUtility.GetAllEnvDTEProjectsAsync(dte))
             {
-                if (await EnvDTEProjectUtility.IsSupportedAsync(project))
-                {
-                    isSupported = true;
-                    break;
-                }
+                isSupported = true;
+                break;
             }
 
             return isSupported;
@@ -593,7 +590,7 @@ namespace NuGet.PackageManagement.VisualStudio
                         AfterNuGetProjectRenamed?.Invoke(this, new NuGetProjectEventArgs(nuGetProject));
 
                     }
-                    else if (await EnvDTEProjectUtility.IsSolutionFolderAsync(envDTEProject))
+                    else if (EnvDTEProjectUtility.IsSolutionFolder(envDTEProject))
                     {
                         // In the case where a solution directory was changed, project FullNames are unchanged.
                         // We only need to invalidate the projects under the current tree so as to sync the CustomUniqueNames.
@@ -690,16 +687,7 @@ namespace NuGet.PackageManagement.VisualStudio
                     {
                         var dte = await _asyncServiceProvider.GetDTEAsync();
 
-                        var supportedProjects = new List<Project>();
-                        foreach (Project project in await EnvDTESolutionUtility.GetAllEnvDTEProjectsAsync(dte))
-                        {
-                            if (await EnvDTEProjectUtility.IsSupportedAsync(project))
-                            {
-                                supportedProjects.Add(project);
-                            }
-                        }
-
-                        foreach (var project in supportedProjects)
+                        foreach (var project in await EnvDTESolutionUtility.GetAllEnvDTEProjectsAsync(dte))
                         {
                             try
                             {

@@ -12,7 +12,6 @@ using FluentAssertions;
 using Moq;
 using NuGet.Common;
 using NuGet.Configuration;
-using NuGet.Configuration.Test;
 using NuGet.DependencyResolver;
 using NuGet.Frameworks;
 using NuGet.LibraryModel;
@@ -2187,7 +2186,7 @@ namespace NuGet.Commands.Test
 
             var projectInformationEvent = telemetryEvents.Single(e => e.Name.Equals("ProjectRestoreInformation"));
 
-            projectInformationEvent.Count.Should().Be(25);
+            projectInformationEvent.Count.Should().Be(29);
             projectInformationEvent["RestoreSuccess"].Should().Be(true);
             projectInformationEvent["NoOpResult"].Should().Be(false);
             projectInformationEvent["IsCentralVersionManagementEnabled"].Should().Be(false);
@@ -2213,6 +2212,10 @@ namespace NuGet.Commands.Test
             projectInformationEvent["Duration"].Should().NotBeNull();
             projectInformationEvent["PackageSourceMapping.IsMappingEnabled"].Should().Be(false);
             projectInformationEvent["IsTransitiveDependencyPinningDisabled"].Should().Be(false);
+            projectInformationEvent["SourcesCount"].Should().Be(1);
+            projectInformationEvent["HttpSourcesCount"].Should().Be(0);
+            projectInformationEvent["LocalSourcesCount"].Should().Be(1);
+            projectInformationEvent["FallbackFoldersCount"].Should().Be(0);
         }
 
         [Fact]
@@ -2268,7 +2271,7 @@ namespace NuGet.Commands.Test
 
             var projectInformationEvent = telemetryEvents.Single(e => e.Name.Equals("ProjectRestoreInformation"));
 
-            projectInformationEvent.Count.Should().Be(17);
+            projectInformationEvent.Count.Should().Be(21);
             projectInformationEvent["RestoreSuccess"].Should().Be(true);
             projectInformationEvent["NoOpResult"].Should().Be(true);
             projectInformationEvent["IsCentralVersionManagementEnabled"].Should().Be(false);
@@ -2286,9 +2289,13 @@ namespace NuGet.Commands.Test
             projectInformationEvent["NoOpReplayLogsDuration"].Should().NotBeNull();
             projectInformationEvent["PackageSourceMapping.IsMappingEnabled"].Should().Be(false);
             projectInformationEvent["IsTransitiveDependencyPinningDisabled"].Should().Be(false);
-        }
+            projectInformationEvent["SourcesCount"].Should().Be(1);
+            projectInformationEvent["HttpSourcesCount"].Should().Be(0);
+            projectInformationEvent["LocalSourcesCount"].Should().Be(1);
+            projectInformationEvent["FallbackFoldersCount"].Should().Be(0);
+    }
 
-        [Fact]
+    [Fact]
         public async Task ExecuteAsync_WithPartiallyPopulatedGlobalPackagesFolder_PopulatesNewlyInstalledPackagesTelemetry()
         {
             // Arrange
@@ -2343,7 +2350,7 @@ namespace NuGet.Commands.Test
 
             var projectInformationEvent = telemetryEvents.Single(e => e.Name.Equals("ProjectRestoreInformation"));
 
-            projectInformationEvent.Count.Should().Be(25);
+            projectInformationEvent.Count.Should().Be(29);
             projectInformationEvent["RestoreSuccess"].Should().Be(true);
             projectInformationEvent["NoOpResult"].Should().Be(false);
             projectInformationEvent["TotalUniquePackagesCount"].Should().Be(2);

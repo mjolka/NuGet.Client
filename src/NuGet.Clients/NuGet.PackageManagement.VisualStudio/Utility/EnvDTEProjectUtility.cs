@@ -45,9 +45,10 @@ namespace NuGet.PackageManagement.VisualStudio
 
         #region Get Project Information
 
-        internal static async Task<bool> IsSolutionFolderAsync(EnvDTE.Project envDTEProject)
+        internal static bool IsSolutionFolder(EnvDTE.Project envDTEProject)
         {
-            await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             return envDTEProject.Kind != null && envDTEProject.Kind.Equals(VsProjectTypes.VsProjectItemKindSolutionFolder, StringComparison.OrdinalIgnoreCase);
         }
 
@@ -75,26 +76,26 @@ namespace NuGet.PackageManagement.VisualStudio
 
             await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-            var vsProject = (IVsProject)(await envDTEProject.ToVsHierarchyAsync());
+            var hierarchy = await envDTEProject.ToVsHierarchyAsync();
+            var vsProject = hierarchy as IVsProject;
             if (vsProject == null)
             {
                 return false;
             }
 
             int pFound;
-            uint itemId;
 
-            if (await IsProjectCapabilityCompliantAsync(envDTEProject))
+            if (VsHierarchyUtility.IsProjectCapabilityCompliant(hierarchy))
             {
                 // REVIEW: We want to revisit this after RTM - the code in this if statement should be applied to every project type.
                 // We're checking for VSDOCUMENTPRIORITY.DP_Standard here to see if the file is included in the project.
                 // Original check (outside of if) did not have this.
                 var priority = new VSDOCUMENTPRIORITY[1];
-                var hr = vsProject.IsDocumentInProject(path, out pFound, priority, out itemId);
+                var hr = vsProject.IsDocumentInProject(path, out pFound, priority, out _);
                 return ErrorHandler.Succeeded(hr) && pFound == 1 && priority[0] >= VSDOCUMENTPRIORITY.DP_Standard;
             }
 
-            var hres = vsProject.IsDocumentInProject(path, out pFound, Array.Empty<VSDOCUMENTPRIORITY>(), out itemId);
+            var hres = vsProject.IsDocumentInProject(path, out pFound, Array.Empty<VSDOCUMENTPRIORITY>(), out _);
             return ErrorHandler.Succeeded(hres) && pFound == 1;
         }
 
@@ -404,8 +405,11 @@ namespace NuGet.PackageManagement.VisualStudio
         private static async Task<bool> IsProjectCapabilityCompliantAsync(EnvDTE.Project envDTEProject)
         {
             Debug.Assert(envDTEProject != null);
+
+            await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
             var hierarchy = await envDTEProject.ToVsHierarchyAsync();
-            return await VsHierarchyUtility.IsProjectCapabilityCompliantAsync(hierarchy);
+            return VsHierarchyUtility.IsProjectCapabilityCompliant(hierarchy);
         }
 
         public async static Task<NuGetProject> GetNuGetProjectAsync(EnvDTE.Project project, ISolutionManager solutionManager)
@@ -442,7 +446,7 @@ namespace NuGet.PackageManagement.VisualStudio
         {
             await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-            if (!await IsSolutionFolderAsync(envDTEProject))
+            if (!IsSolutionFolder(envDTEProject))
             {
                 return Array.Empty<EnvDTE.Project>();
             }
@@ -464,7 +468,7 @@ namespace NuGet.PackageManagement.VisualStudio
                     {
                         supportedChildProjects.Add(nestedProject);
                     }
-                    else if (await IsSolutionFolderAsync(nestedProject))
+                    else if (IsSolutionFolder(nestedProject))
                     {
                         containerProjects.Enqueue(nestedProject);
                     }

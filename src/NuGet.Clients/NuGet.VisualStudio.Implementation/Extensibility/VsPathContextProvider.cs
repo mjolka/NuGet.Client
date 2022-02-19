@@ -23,11 +23,12 @@ using NuGet.Packaging.Signing;
 using NuGet.ProjectManagement;
 using NuGet.ProjectManagement.Projects;
 using NuGet.ProjectModel;
+using NuGet.VisualStudio.Etw;
 using NuGet.VisualStudio.Implementation.Resources;
 using NuGet.VisualStudio.Telemetry;
 using Task = System.Threading.Tasks.Task;
 
-namespace NuGet.VisualStudio
+namespace NuGet.VisualStudio.Implementation.Extensibility
 {
     // Implementation of IVsPathContextProvider as a MEF-exported component.
     [Export(typeof(IVsPathContextProvider))]
@@ -138,6 +139,9 @@ namespace NuGet.VisualStudio
 
         public bool TryCreateContext(string projectUniqueName, out IVsPathContext outputPathContext)
         {
+            const string eventName = nameof(IVsPathContextProvider) + "." + nameof(TryCreateContext);
+            using var _ = NuGetETW.ExtensibilityEventSource.StartStopEvent(eventName);
+
             if (projectUniqueName == null)
             {
                 throw new ArgumentNullException(nameof(projectUniqueName));
@@ -171,6 +175,9 @@ namespace NuGet.VisualStudio
 
         public bool TryCreateSolutionContext(out IVsPathContext2 outputPathContext)
         {
+            const string eventName = nameof(IVsPathContextProvider2) + "." + nameof(TryCreateSolutionContext) + ".1";
+            using var _ = NuGetETW.ExtensibilityEventSource.StartStopEvent(eventName);
+
             try
             {
                 var packagesFolderPath = PackagesFolderPathUtility.GetPackagesFolderPath(_solutionManager.Value, _settings.Value);
@@ -188,6 +195,9 @@ namespace NuGet.VisualStudio
 
         public bool TryCreateSolutionContext(string solutionDirectory, out IVsPathContext2 outputPathContext)
         {
+            const string eventName = nameof(IVsPathContextProvider2) + "." + nameof(TryCreateSolutionContext) + ".2";
+            using var _ = NuGetETW.ExtensibilityEventSource.StartStopEvent(eventName);
+
             if (solutionDirectory == null)
             {
                 throw new ArgumentNullException(nameof(solutionDirectory));
@@ -213,7 +223,7 @@ namespace NuGet.VisualStudio
             await NuGetUIThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
             DTE dte = await _asyncServiceprovider.GetDTEAsync();
-            IEnumerable<Project> supportedProjects = await GetProjectsInSolutionAsync(dte);
+            IEnumerable<Project> supportedProjects = await EnvDTESolutionUtility.GetAllEnvDTEProjectsAsync(dte);
 
             foreach (Project solutionProject in supportedProjects)
             {
@@ -359,23 +369,11 @@ namespace NuGet.VisualStudio
                 _telemetryProvider);
         }
 
-        private async Task<IEnumerable<Project>> GetProjectsInSolutionAsync(DTE dte)
-        {
-            IEnumerable<Project> allProjects = await EnvDTESolutionUtility.GetAllEnvDTEProjectsAsync(dte);
-            var supportedProjects = new List<Project>();
-            foreach (Project project in allProjects)
-            {
-                if (await EnvDTEProjectUtility.IsSupportedAsync(project))
-                {
-                    supportedProjects.Add(project);
-                }
-            }
-
-            return supportedProjects;
-        }
-
         public bool TryCreateNoSolutionContext(out IVsPathContext vsPathContext)
         {
+            const string eventName = nameof(IVsPathContextProvider2) + "." + nameof(TryCreateNoSolutionContext);
+            using var _ = NuGetETW.ExtensibilityEventSource.StartStopEvent(eventName);
+
             try
             {
                 // invoke async operation from within synchronous method

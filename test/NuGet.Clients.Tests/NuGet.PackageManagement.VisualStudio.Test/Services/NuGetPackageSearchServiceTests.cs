@@ -17,6 +17,7 @@ using Microsoft.VisualStudio.Threading;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NuGet.Commands;
 using NuGet.Common;
 using NuGet.Configuration;
 using NuGet.Packaging.Core;
@@ -35,7 +36,7 @@ namespace NuGet.PackageManagement.VisualStudio.Test
     {
         private readonly SourceRepository _sourceRepository;
         private readonly IEnumerable<IPackageReferenceContextInfo> _installedPackages;
-        private readonly IEnumerable<IPackageReferenceContextInfo> _transitivePackages;
+        private readonly IEnumerable<ITransitivePackageReferenceContextInfo> _transitivePackages;
         private readonly IReadOnlyCollection<IProjectContextInfo> _projects;
         private readonly Mock<IComponentModel> _componentModel;
 
@@ -43,7 +44,7 @@ namespace NuGet.PackageManagement.VisualStudio.Test
             : base(globalServiceProvider)
         {
             _installedPackages = new List<IPackageReferenceContextInfo>();
-            _transitivePackages = new List<IPackageReferenceContextInfo>();
+            _transitivePackages = new List<ITransitivePackageReferenceContextInfo>();
             _projects = new List<IProjectContextInfo>
             {
                 new ProjectContextInfo(
@@ -302,6 +303,7 @@ namespace NuGet.PackageManagement.VisualStudio.Test
             _componentModel.Setup(x => x.GetService<ISettings>()).Returns(settings.Object);
             _componentModel.Setup(x => x.GetService<ISourceRepositoryProvider>()).Returns(sourceRepositoryProvider.Object);
             _componentModel.Setup(x => x.GetService<INuGetProjectContext>()).Returns(new Mock<INuGetProjectContext>().Object);
+            _componentModel.Setup(x => x.GetService<IRestoreProgressReporter>()).Returns(new Mock<IRestoreProgressReporter>().Object);
 
             var service = Package.GetGlobalService(typeof(SAsyncServiceProvider)) as IAsyncServiceProvider;
             ServiceLocator.InitializePackageServiceProvider(service);

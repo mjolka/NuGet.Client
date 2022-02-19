@@ -9,6 +9,7 @@ using NuGet.Configuration;
 using NuGet.PackageManagement;
 using NuGet.PackageManagement.VisualStudio;
 using NuGet.Protocol.Core.Types;
+using NuGet.VisualStudio.Implementation.Extensibility;
 using NuGet.VisualStudio.Implementation.Test.TestUtilities;
 using NuGet.VisualStudio.Telemetry;
 using Xunit;
@@ -190,7 +191,7 @@ namespace NuGet.VisualStudio.Implementation.Test.Extensibility
                 telemetryProvider = new Mock<INuGetTelemetryProvider>(MockBehavior.Strict).Object;
             }
 
-            return new VsPackageInstallerServices(vsSolutionManager, sourceRepositoryProvider, settings, deleteOnRestartManager, vsProjectThreadingService, telemetryProvider);
+            return new VsPackageInstallerServices(vsSolutionManager, sourceRepositoryProvider, settings, deleteOnRestartManager, vsProjectThreadingService, telemetryProvider, restoreProgressReporter: null);
         }
     }
 }

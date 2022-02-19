@@ -86,6 +86,12 @@ namespace NuGet.VisualStudio.Internal.Contracts
         protected override void SerializeCore(ref MessagePackWriter writer, IPackageReferenceContextInfo value, MessagePackSerializerOptions options)
         {
             writer.WriteMapHeader(count: 6);
+
+            WriteSerialize(ref writer, value, options);
+        }
+
+        internal static void WriteSerialize(ref MessagePackWriter writer, IPackageReferenceContextInfo value, MessagePackSerializerOptions options)
+        {
             writer.Write(IdentityPropertyName);
             PackageIdentityFormatter.Instance.Serialize(ref writer, value.Identity, options);
             writer.Write(FrameworkPropertyName);

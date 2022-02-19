@@ -1384,6 +1384,15 @@ namespace NuGet.PackageManagement.UI {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0} license.
+        /// </summary>
+        public static string LicenseTerm_LinkName {
+            get {
+                return ResourceManager.GetString("LicenseTerm_LinkName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Don&apos;t show again.
         /// </summary>
         public static string Link_DoNotShowAgain {
@@ -1524,6 +1533,24 @@ namespace NuGet.PackageManagement.UI {
         public static string Operation_TotalTime {
             get {
                 return ResourceManager.GetString("Operation_TotalTime", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Top-level packages.
+        /// </summary>
+        public static string PackageLevel_TopLevelPackageHeaderText {
+            get {
+                return ResourceManager.GetString("PackageLevel_TopLevelPackageHeaderText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Transitive packages.
+        /// </summary>
+        public static string PackageLevel_TransitivePackageHeaderText {
+            get {
+                return ResourceManager.GetString("PackageLevel_TransitivePackageHeaderText", resourceCulture);
             }
         }
         

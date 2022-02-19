@@ -43,6 +43,7 @@ steps:
   inputs:
     getDropNameByDrop: true
     optimizationInputsDropNamePrefix: OptimizationInputs/$(System.TeamProject)/$(Build.Repository.Name)
+    ShouldSkipOptimize: $(ShouldSkipOptimize)
     AccessToken: $(System.AccessToken)
   condition: "and(succeeded(), eq(variables['BuildRTM'], 'false'), eq(variables['IsOfficialBuild'], 'true'))"
 
@@ -370,7 +371,7 @@ steps:
   inputs:
     targetPath: "$(Build.Repository.LocalPath)\\artifacts\\localizationArtifacts\\"
     artifactName: "localizationArtifacts"
-  condition: "and(succeeded(), eq(variables['BuildRTM'], 'false'), eq(variables['IsOfficialBuild'], 'true'))"
+  condition: "and(succeededOrFailed(),eq(variables['BuildRTM'], 'false'), eq(variables['IsOfficialBuild'], 'true'))"
 
 - task: NuGetCommand@2
   displayName: Publish public Nuget packages to nuget-build

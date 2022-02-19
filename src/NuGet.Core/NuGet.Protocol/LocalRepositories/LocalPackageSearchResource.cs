@@ -35,7 +35,7 @@ namespace NuGet.Protocol
             ILogger log,
             CancellationToken token)
         {
-            return await Task.Run(() =>
+            return await Task.Factory.StartNew(() =>
             {
                 // Check if source is available.
                 if (!IsLocalOrUNC(_localResource.Root))
@@ -57,8 +57,10 @@ namespace NuGet.Protocol
                     query = query.Where(package => ContainsAnyTerm(terms, package));
                 }
 
-                // Collapse to the highest version per id
-                var collapsedQuery = CollapseToHighestVersion(query);
+                // Collapse to the highest version per id, if necessary
+                var collapsedQuery = filters?.Filter == SearchFilterType.IsLatestVersion ||
+                                     filters?.Filter == SearchFilterType.IsAbsoluteLatestVersion
+                                     ? CollapseToHighestVersion(query) : query;
 
                 // execute the query
                 var packages = collapsedQuery
@@ -70,7 +72,7 @@ namespace NuGet.Protocol
                 return packages
                     .Select(package => CreatePackageSearchResult(package, filters, log, token))
                     .ToArray();
-            });
+            }, token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
         /// <summary>
@@ -108,6 +110,8 @@ namespace NuGet.Protocol
             ILogger log,
             CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var metadata = new LocalPackageSearchMetadata(package);
 
             return metadata

@@ -17,6 +17,7 @@ using NuGet.Packaging;
 using NuGet.ProjectManagement;
 using NuGet.ProjectManagement.Projects;
 using NuGet.VisualStudio.Contracts;
+using NuGet.VisualStudio.Etw;
 using NuGet.VisualStudio.Telemetry;
 
 namespace NuGet.VisualStudio.Implementation.Extensibility
@@ -34,8 +35,22 @@ namespace NuGet.VisualStudio.Implementation.Extensibility
             _telemetryProvider = telemetryProvider ?? throw new ArgumentNullException(nameof(telemetryProvider));
         }
 
+        [System.Diagnostics.Tracing.EventData]
+        private struct GetInstalledPackagesAsyncEventData
+        {
+            [System.Diagnostics.Tracing.EventField]
+            public Guid Project { get; set; }
+        }
+
         public async Task<InstalledPackagesResult> GetInstalledPackagesAsync(Guid projectId, CancellationToken cancellationToken)
         {
+            const string etwEventName = nameof(INuGetProjectService) + "." + nameof(GetInstalledPackagesAsync);
+            var eventData = new GetInstalledPackagesAsyncEventData()
+            {
+                Project = projectId
+            };
+            using var _ = NuGetETW.ExtensibilityEventSource.StartStopEvent(etwEventName, eventData);
+
             try
             {
                 // Just in case we're on the UI thread, switch to background thread. Very low cost (does not schedule new task) if already on background thread.
@@ -78,23 +93,32 @@ namespace NuGet.VisualStudio.Implementation.Extensibility
 
         private async Task<(InstalledPackageResultStatus, IReadOnlyCollection<NuGetInstalledPackage>)> GetInstalledPackagesAsync(BuildIntegratedNuGetProject project, CancellationToken cancellationToken)
         {
-            NuGetInstalledPackage ToNuGetInstalledPackage(PackageReference packageReference, FallbackPackagePathResolver pathResolver)
+            NuGetInstalledPackage ToNuGetInstalledPackage(PackageReference packageReference, FallbackPackagePathResolver pathResolver, bool directDependency)
             {
                 var id = packageReference.PackageIdentity.Id;
 
-                var versionRange = packageReference.AllowedVersions;
-                string requestedRange =
-                    packageReference.AllowedVersions.OriginalString // most packages
-                    ?? packageReference.AllowedVersions.ToShortString();
-                string version = versionRange.MinVersion.OriginalVersion ?? versionRange.MinVersion.ToNormalizedString();
-                var installPath = pathResolver.GetPackageDirectory(id, version);
-                bool directDependency = true;
+                string requestedRange = null;
+                if (directDependency)
+                {
+                    requestedRange =
+                        packageReference.AllowedVersions?.OriginalString // When Version is specified
+                        ?? packageReference.AllowedVersions?.ToShortString(); // Probably only when Version is not specified in msbuild
+                }
+
+                string version =
+                    packageReference.PackageIdentity.Version?.ToNormalizedString()
+                    ?? string.Empty;
+
+                var installPath =
+                    version != null
+                    ? pathResolver.GetPackageDirectory(id, version)
+                    : null;
 
                 return NuGetContractsFactory.CreateNuGetInstalledPackage(id, requestedRange, version, installPath, directDependency);
             }
 
             InstalledPackageResultStatus status;
-            IReadOnlyCollection<NuGetInstalledPackage> installedPackages;
+            List<NuGetInstalledPackage> installedPackages;
 
             (InstalledPackageResultStatus, IReadOnlyCollection<NuGetInstalledPackage>) ErrorResult(InstalledPackageResultStatus status)
             {
@@ -131,10 +155,28 @@ namespace NuGet.VisualStudio.Implementation.Extensibility
             var packagesPath = VSRestoreSettingsUtilities.GetPackagesPath(_settings, packageSpec);
             FallbackPackagePathResolver pathResolver = new FallbackPackagePathResolver(packagesPath, VSRestoreSettingsUtilities.GetFallbackFolders(_settings, packageSpec));
 
-            var packageReferences = await project.GetInstalledPackagesAsync(cancellationToken);
+            IReadOnlyCollection<PackageReference> directPackages;
+            IReadOnlyCollection<PackageReference> transitivePackages;
 
-            installedPackages = packageReferences.Select(p => ToNuGetInstalledPackage(p, pathResolver))
-                .ToList();
+            if (project is IPackageReferenceProject packageReferenceProject)
+            {
+                var installed = await packageReferenceProject.GetInstalledAndTransitivePackagesAsync(cancellationToken);
+                directPackages = installed.InstalledPackages;
+                transitivePackages = installed.TransitivePackages;
+            }
+            else
+            {
+                directPackages = (await project.GetInstalledPackagesAsync(cancellationToken)).ToList();
+                transitivePackages = Array.Empty<PackageReference>();
+            }
+
+            installedPackages = new List<NuGetInstalledPackage>(directPackages.Count + (transitivePackages?.Count ?? 0));
+
+            installedPackages.AddRange(directPackages.Select(p => ToNuGetInstalledPackage(p, pathResolver, directDependency: true)));
+            if (transitivePackages != null)
+            {
+                installedPackages.AddRange(transitivePackages.Select(p => ToNuGetInstalledPackage(p, pathResolver, directDependency: false)));
+            }
 
             return (status, installedPackages);
         }

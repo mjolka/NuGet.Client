@@ -3,12 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
 using NuGet.Common;
 using NuGet.Protocol;
 using NuGet.Test.Server;
@@ -51,6 +49,14 @@ namespace NuGet.Core.FuncTest
             // 20 requests that take 250ms each for a total of 5 seconds (plus noise).
             var requestDuration = TimeSpan.FromMilliseconds(250);
             var maxTries = 20;
+            var retryDelay = TimeSpan.Zero;
+
+            TestEnvironmentVariableReader testEnvironmentVariableReader = new TestEnvironmentVariableReader(
+                 new Dictionary<string, string>()
+                 {
+                     [EnhancedHttpRetryHelper.RetryCountEnvironmentVariableName] = maxTries.ToString(),
+                     [EnhancedHttpRetryHelper.DelayInMillisecondsEnvironmentVariableName] = retryDelay.TotalMilliseconds.ToString()
+                 });
 
             // Make the request timeout longer than each request duration but less than the total
             // duration of all attempts.
@@ -64,14 +70,14 @@ namespace NuGet.Core.FuncTest
                 return new HttpResponseMessage(HttpStatusCode.InternalServerError);
             };
 
-            var retryHandler = new HttpRetryHandler();
+            var retryHandler = new HttpRetryHandler(testEnvironmentVariableReader);
             var testHandler = new HttpRetryTestHandler(handler);
             var httpClient = new HttpClient(testHandler);
             var request = new HttpRetryHandlerRequest(httpClient, () => new HttpRequestMessage(HttpMethod.Get, TestUrl))
             {
                 MaxTries = maxTries,
                 RequestTimeout = requestTimeout,
-                RetryDelay = TimeSpan.Zero
+                RetryDelay = retryDelay
             };
             var log = new TestLogger();
 
@@ -100,11 +106,7 @@ namespace NuGet.Core.FuncTest
             }
             else
             {
-#if (NETCORE3_0 || NETCORE5_0)
                 Assert.Equal("No connection could be made because the target machine actively refused it.", exception.InnerException.Message);
-#else
-                Assert.Equal("No connection could be made because the target machine actively refused it", exception.InnerException.Message);
-#endif
             }
 #else
             var innerException = Assert.IsType<WebException>(exception.InnerException);
@@ -122,7 +124,7 @@ namespace NuGet.Core.FuncTest
             var exception = await ThrowsException<HttpRequestException>(server);
 #if IS_CORECLR
             Assert.Null(exception.InnerException);
-#if (NETCORE3_0 || NETCORE5_0)
+#if NETCOREAPP3_1_OR_GREATER
             Assert.Equal("Received an invalid status code: 'BAD'.", exception.Message);
 #else
             Assert.Equal("The server returned an invalid or unrecognized response.", exception.Message);
@@ -146,7 +148,7 @@ namespace NuGet.Core.FuncTest
 
             if (RuntimeEnvironmentHelper.IsMacOSX)
             {
-#if (NETCORE3_0 || NETCORE5_0)
+#if NETCOREAPP3_1_OR_GREATER
                 Assert.Equal("nodename nor servname provided, or not known", exception.InnerException.Message);
 #else
                 Assert.Equal("Device not configured", exception.InnerException.Message);
@@ -154,7 +156,7 @@ namespace NuGet.Core.FuncTest
             }
             else if (!RuntimeEnvironmentHelper.IsWindows)
             {
-#if (NETCORE3_0 || NETCORE5_0)
+#if NETCOREAPP3_1_OR_GREATER
                 Assert.Equal("Name or service not known", exception.InnerException.Message);
 #else
                 Assert.Equal("No such device or address", exception.InnerException.Message);
@@ -162,7 +164,7 @@ namespace NuGet.Core.FuncTest
             }
             else
             {
-#if (NETCORE3_0 || NETCORE5_0)
+#if NETCOREAPP3_1_OR_GREATER
                 Assert.Equal("No such host is known.", exception.InnerException.Message);
 #else
                 Assert.Equal("No such host is known", exception.InnerException.Message);
@@ -178,14 +180,24 @@ namespace NuGet.Core.FuncTest
         {
             return await server.ExecuteAsync(async address =>
             {
+                int maxTries = 2;
+                TimeSpan retryDelay = TimeSpan.Zero;
+
+                TestEnvironmentVariableReader testEnvironmentVariableReader = new TestEnvironmentVariableReader(
+                 new Dictionary<string, string>()
+                 {
+                     [EnhancedHttpRetryHelper.RetryCountEnvironmentVariableName] = maxTries.ToString(),
+                     [EnhancedHttpRetryHelper.DelayInMillisecondsEnvironmentVariableName] = retryDelay.TotalMilliseconds.ToString()
+                 });
+
                 // Arrange
-                var retryHandler = new HttpRetryHandler();
+                var retryHandler = new HttpRetryHandler(testEnvironmentVariableReader);
                 var countingHandler = new CountingHandler { InnerHandler = new HttpClientHandler() };
                 var httpClient = new HttpClient(countingHandler);
                 var request = new HttpRetryHandlerRequest(httpClient, () => new HttpRequestMessage(HttpMethod.Get, address))
                 {
-                    MaxTries = 2,
-                    RetryDelay = TimeSpan.Zero
+                    MaxTries = maxTries,
+                    RetryDelay = retryDelay
                 };
 
                 // Act

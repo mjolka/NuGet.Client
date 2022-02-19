@@ -25,6 +25,9 @@ namespace NuGet.PackageManagement.UI
     /// </summary>
     public abstract class DetailControlModel : INotifyPropertyChanged, IDisposable
     {
+        private static readonly string StarAll = VersionRangeFormatter.Instance.Format("p", VersionRange.Parse("*"), VersionRangeFormatter.Instance);
+        private static readonly string StarAllFloating = VersionRangeFormatter.Instance.Format("p", VersionRange.Parse("*-*"), VersionRangeFormatter.Instance);
+
         private CancellationTokenSource _selectedVersionCancellationTokenSource = new CancellationTokenSource();
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1051:DoNotDeclareVisibleInstanceFields")]
@@ -213,7 +216,8 @@ namespace NuGet.PackageManagement.UI
             };
 
             await CreateVersionsAsync(CancellationToken.None);
-            OnCurrentPackageChanged();
+            NuGetUIThreadHelper.JoinableTaskFactory.RunAsync(OnCurrentPackageChanged)
+                .PostOnFailure(nameof(DetailControlModel), nameof(OnCurrentPackageChanged));
 
             var versions = await getVersionsTask;
 
@@ -231,7 +235,8 @@ namespace NuGet.PackageManagement.UI
                 .ToList();
 
             await CreateVersionsAsync(CancellationToken.None);
-            OnCurrentPackageChanged();
+            NuGetUIThreadHelper.JoinableTaskFactory.RunAsync(OnCurrentPackageChanged)
+                .PostOnFailure(nameof(DetailControlModel), nameof(OnCurrentPackageChanged));
 
             (PackageSearchMetadataContextInfo packageSearchMetadata, PackageDeprecationMetadataContextInfo packageDeprecationMetadata) =
                 await searchResultPackage.GetDetailedPackageSearchMetadataAsync();
@@ -272,8 +277,9 @@ namespace NuGet.PackageManagement.UI
                 .PostOnFailure(nameof(DetailControlModel), nameof(DependencyBehavior_SelectedChanged));
         }
 
-        protected virtual void OnCurrentPackageChanged()
+        protected virtual Task OnCurrentPackageChanged()
         {
+            return Task.CompletedTask;
         }
 
         public virtual void OnFilterChanged(ItemFilter? previousFilter, ItemFilter currentFilter)
@@ -519,7 +525,14 @@ namespace NuGet.PackageManagement.UI
                 return null;
             }
 
-            var versionString = VersionRangeFormatter.Instance.Format("p", alternatePackageMetadata.VersionRange, VersionRangeFormatter.Instance);
+            // pretty print
+            string versionString = VersionRangeFormatter.Instance.Format("p", alternatePackageMetadata.VersionRange, VersionRangeFormatter.Instance);
+
+            if (StarAll.Equals(versionString, StringComparison.InvariantCultureIgnoreCase) || StarAllFloating.Equals(versionString, StringComparison.InvariantCultureIgnoreCase))
+            {
+                return alternatePackageMetadata.PackageId;
+            }
+
             return $"{alternatePackageMetadata.PackageId} {versionString}";
         }
 

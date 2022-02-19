@@ -147,6 +147,7 @@ namespace NuGet.Options
                 _packageSources.CurrentChanged += OnSelectedPackageSourceChanged;
                 PackageSourcesListBox.GotFocus += PackageSourcesListBox_GotFocus;
                 PackageSourcesListBox.DataSource = _packageSources;
+                ResetItemsCheckedState(PackageSourcesListBox, _packageSources);
 
                 if (machineWidePackageSources.Count > 0)
                 {
@@ -154,6 +155,7 @@ namespace NuGet.Options
                     _machineWidepackageSources.CurrentChanged += OnSelectedMachineWidePackageSourceChanged;
                     MachineWidePackageSourcesListBox.GotFocus += MachineWidePackageSourcesListBox_GotFocus;
                     MachineWidePackageSourcesListBox.DataSource = _machineWidepackageSources;
+                    ResetItemsCheckedState(MachineWidePackageSourcesListBox, _machineWidepackageSources);
                 }
                 else
                 {
@@ -181,6 +183,17 @@ namespace NuGet.Options
             {
                 MessageHelper.ShowErrorMessage(Resources.ShowError_SettingActivatedFailed, Resources.ErrorDialogBoxTitle);
                 ActivityLog.LogError(NuGetUI.LogEntrySource, ex.ToString());
+            }
+        }
+
+        private void ResetItemsCheckedState(PackageSourceCheckedListBox checkedListBox, BindingSource bindingSource)
+        {
+            var list = (IList<PackageSourceContextInfo>)bindingSource.List;
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                var isEnabled = list[i].IsEnabled;
+                checkedListBox.SetItemChecked(i, isEnabled);
             }
         }
 
@@ -302,6 +315,10 @@ namespace NuGet.Options
                 return;
             }
             _packageSources.Remove(PackageSourcesListBox.SelectedItem);
+
+            // changing _packageSources appears to clear all the checked items, so now we have to reset all the checkbox states
+            ResetItemsCheckedState(PackageSourcesListBox, _packageSources);
+
             UpdateUI();
         }
 
@@ -313,6 +330,9 @@ namespace NuGet.Options
             }
 
             _packageSources.Add(CreateNewPackageSource());
+
+            // changing _packageSources appears to clear all the checked items, so now we have to reset all the checkbox states
+            ResetItemsCheckedState(PackageSourcesListBox, _packageSources);
 
             // auto-select the newly-added item
             PackageSourcesListBox.SelectedIndex = PackageSourcesListBox.Items.Count - 1;
@@ -451,24 +471,24 @@ namespace NuGet.Options
                 CopySelectedItem((PackageSourceContextInfo)currentListBox.SelectedItem);
                 e.Handled = true;
             }
-            else if (e.KeyCode == Keys.Space)
-            {
-                TogglePackageSourceEnabled(currentListBox.SelectedIndex, currentListBox);
-                e.Handled = true;
-            }
         }
 
-        private void TogglePackageSourceEnabled(int itemIndex, PackageSourceCheckedListBox currentListBox)
+        private void PackageSourcesListBox_ItemCheck(object sender, ItemCheckEventArgs e)
         {
-            if (itemIndex < 0 || itemIndex >= currentListBox.Items.Count)
+            var checkedListBox = sender as CheckedListBox;
+            if (checkedListBox == null)
             {
                 return;
             }
 
-            var item = (PackageSourceContextInfo)currentListBox.Items[itemIndex];
-            item.IsEnabled = !item.IsEnabled;
+            if (e.Index < 0 || e.Index >= checkedListBox.Items.Count)
+            {
+                return;
+            }
 
-            currentListBox.Invalidate(GetCheckBoxRectangleForListBoxItem(currentListBox, itemIndex));
+            bool isEnabled = e.NewValue == CheckState.Checked;
+            var packageSource = (PackageSourceContextInfo)checkedListBox.Items[e.Index];
+            packageSource.IsEnabled = isEnabled;
         }
 
         private Rectangle GetCheckBoxRectangleForListBoxItem(PackageSourceCheckedListBox currentListBox, int itemIndex)
@@ -491,33 +511,6 @@ namespace NuGet.Options
         {
             Clipboard.Clear();
             Clipboard.SetText(selectedPackageSource.Source);
-        }
-
-        private void PackageSourcesListBox_MouseUp(object sender, MouseEventArgs e)
-        {
-            var currentListBox = (PackageSourceCheckedListBox)sender;
-            if (e.Button == MouseButtons.Right)
-            {
-                int itemIndexToSelect = currentListBox.IndexFromPoint(e.Location);
-                if (itemIndexToSelect >= 0 && itemIndexToSelect < currentListBox.Items.Count)
-                {
-                    currentListBox.SelectedIndex = itemIndexToSelect;
-                }
-            }
-            else if (e.Button == MouseButtons.Left)
-            {
-                var itemIndex = currentListBox.SelectedIndex;
-                if (itemIndex >= 0
-                    && itemIndex < currentListBox.Items.Count)
-                {
-                    var checkBoxRectangle = GetCheckBoxRectangleForListBoxItem(currentListBox, itemIndex);
-                    // if the mouse click position is inside the checkbox, toggle the IsEnabled property
-                    if (checkBoxRectangle.Contains(e.Location))
-                    {
-                        TogglePackageSourceEnabled(itemIndex, currentListBox);
-                    }
-                }
-            }
         }
 
         private void PackageSourcesListBox_MouseMove(object sender, MouseEventArgs e)

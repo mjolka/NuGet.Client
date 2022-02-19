@@ -9,7 +9,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.ProjectSystem;
+using Microsoft.VisualStudio.Sdk.TestFramework;
 using Moq;
 using NuGet.Commands;
 using NuGet.Commands.Test;
@@ -26,13 +28,34 @@ using NuGet.Protocol.Core.Types;
 using NuGet.Test.Utility;
 using NuGet.Versioning;
 using NuGet.VisualStudio;
+using NuGet.VisualStudio.Common.Test;
 using Test.Utility;
 using Xunit;
+using static NuGet.PackageManagement.VisualStudio.Test.ProjectFactories;
 
 namespace NuGet.PackageManagement.VisualStudio.Test
 {
-    public class CpsPackageReferenceProjectTests
+    [Collection(MockedVS.Collection)]
+    public class CpsPackageReferenceProjectTests : MockedVSCollectionTests
     {
+        public CpsPackageReferenceProjectTests(GlobalServiceProvider globalServiceProvider)
+            : base(globalServiceProvider)
+        {
+            var componentModel = new Mock<IComponentModel>();
+            AddService<SComponentModel>(Task.FromResult((object)componentModel.Object));
+
+            // Force Enable Transitive Origin experiment tests
+            var constant = ExperimentationConstants.TransitiveDependenciesInPMUI;
+            var flightsEnabled = new Dictionary<string, bool>()
+            {
+                { constant.FlightFlag, true },
+            };
+            var service = new NuGetExperimentationService(new TestEnvironmentVariableReader(new Dictionary<string, string>()), new TestVisualStudioExperimentalService(flightsEnabled));
+
+            service.IsExperimentEnabled(ExperimentationConstants.TransitiveDependenciesInPMUI).Should().Be(true);
+            componentModel.Setup(x => x.GetService<INuGetExperimentationService>()).Returns(service);
+        }
+
         [Fact]
         public async Task GetInstalledVersion_WithAssetsFile_ReturnsVersionsFromAssetsSpecs()
         {
@@ -390,15 +413,14 @@ namespace NuGet.PackageManagement.VisualStudio.Test
             {
                 // Setup
                 var projectName = "project1";
-                var projectFullPath = Path.Combine(testDirectory.Path, projectName + ".csproj");
 
                 // Project
                 var projectCache = new ProjectSystemCache();
                 IVsProjectAdapter projectAdapter = (new Mock<IVsProjectAdapter>()).Object;
+                var packageSpec = GetPackageSpec(projectName, testDirectory, "[2.0.0, )");
+                var projectFullPath = packageSpec.RestoreMetadata.ProjectPath;
                 var project = CreateCpsPackageReferenceProject(projectName, projectFullPath, projectCache);
-
                 var projectNames = GetTestProjectNames(projectFullPath, projectName);
-                var packageSpec = GetPackageSpec(projectName, projectFullPath, "[2.0.0, )");
 
                 // Restore info
                 var projectRestoreInfo = ProjectTestHelpers.GetDGSpecFromPackageSpecs(packageSpec);
@@ -433,7 +455,7 @@ namespace NuGet.PackageManagement.VisualStudio.Test
                 packages.Should().Contain(a => a.PackageIdentity.Equals(new PackageIdentity("packageA", new NuGetVersion("2.0.0"))));
 
                 // Setup
-                packageSpec = GetPackageSpec(projectName, projectFullPath, "[3.0.0, )");
+                packageSpec = GetPackageSpec(projectName, testDirectory, "[3.0.0, )");
 
                 // Restore info
                 projectRestoreInfo = ProjectTestHelpers.GetDGSpecFromPackageSpecs(packageSpec);
@@ -3277,6 +3299,114 @@ namespace NuGet.PackageManagement.VisualStudio.Test
             await Assert.ThrowsAnyAsync<ProjectNotNominatedException>(() => target.GetPackageSpecsAndAdditionalMessagesAsync(cacheContext));
         }
 
+        [Fact]
+        public async Task TestPackageManager_ExecuteNuGetProjectActionsAsync_WithProgressReporter_WhenPackageIsInstalled_AssetsFileWritesAreReported()
+        {
+            using var pathContext = new SimpleTestPathContext();
+            using var testSolutionManager = new TestSolutionManager();
+
+            // Arrange - Setup project 
+            var packageA = new SimpleTestPackageContext("packageA", "1.0.0");
+            await SimpleTestPackageUtility.CreateFolderFeedV3Async(pathContext.PackageSource, packageA);
+            var sources = new PackageSource[] { new PackageSource(pathContext.PackageSource) };
+            var sourceRepositoryProvider = TestSourceRepositoryUtility.CreateSourceRepositoryProvider(sources);
+            var settings = Settings.LoadDefaultSettings(pathContext.SolutionRoot);
+            var projectCache = new ProjectSystemCache();
+            var projectName = "project";
+            var dependencyGraphSpec = ProjectTestHelpers.GetDGSpecFromPackageSpecs(ProjectTestHelpers.GetPackageSpec(settings, projectName, rootPath: pathContext.SolutionRoot));
+            var projectFullPath = dependencyGraphSpec.Projects[0].FilePath;
+            var cpsPackageReferenceProject = CreateTestCpsPackageReferenceProject(projectName, projectFullPath, projectCache);
+            testSolutionManager.NuGetProjects.Add(cpsPackageReferenceProject);
+            AddProjectDetailsToCache(projectCache, dependencyGraphSpec, cpsPackageReferenceProject, GetTestProjectNames(projectFullPath, projectName));
+
+            //  Setup expectations
+            var progressReporter = new Mock<IRestoreProgressReporter>(MockBehavior.Strict);
+            progressReporter.Setup(e => e.StartProjectUpdate(It.Is<string>(path => path == projectFullPath), It.IsAny<IReadOnlyList<string>>())).Verifiable();
+            progressReporter.Setup(e => e.EndProjectUpdate(It.Is<string>(path => path == projectFullPath), It.IsAny<IReadOnlyList<string>>())).Verifiable();
+
+            var nuGetPackageManager = new NuGetPackageManager(sourceRepositoryProvider, settings, testSolutionManager, new TestDeleteOnRestartManager(), progressReporter.Object);
+            var actions = await nuGetPackageManager.PreviewInstallPackageAsync(cpsPackageReferenceProject, packageA.Id, new ResolutionContext(), new TestNuGetProjectContext(),
+                    sourceRepositoryProvider.GetRepositories(), sourceRepositoryProvider.GetRepositories(), CancellationToken.None);
+
+            // Preconditions
+            actions.Should().HaveCount(1);
+
+            // Act
+            await nuGetPackageManager.ExecuteNuGetProjectActionsAsync(
+                cpsPackageReferenceProject,
+                actions,
+                new TestNuGetProjectContext(),
+                new SourceCacheContext(),
+                CancellationToken.None);
+
+            // Assert 
+            progressReporter.VerifyAll();
+        }
+
+        [Fact]
+        public async Task TestPackageManager_ExecuteNuGetProjectActionsAsync_WithProgressReporter_WhenChildProjectChanges_AssetsFileWritesForParentsAreReported()
+        {
+            using var pathContext = new SimpleTestPathContext();
+            using var testSolutionManager = new TestSolutionManager();
+
+            // Arrange - Setup project
+            var packageA = new SimpleTestPackageContext("packageA", "1.0.0");
+            await SimpleTestPackageUtility.CreateFolderFeedV3Async(pathContext.PackageSource, packageA);
+            var sources = new PackageSource[] { new PackageSource(pathContext.PackageSource) };
+            var sourceRepositoryProvider = TestSourceRepositoryUtility.CreateSourceRepositoryProvider(sources);
+            var settings = Settings.LoadDefaultSettings(pathContext.SolutionRoot);
+            var projectCache = new ProjectSystemCache();
+
+            // Parent project
+            var parentProject = "parentProject";
+            var parentDependencyGraphSpec = ProjectTestHelpers.GetDGSpecFromPackageSpecs(ProjectTestHelpers.GetPackageSpec(settings, parentProject, rootPath: pathContext.SolutionRoot));
+            var parentProjectFullPath = parentDependencyGraphSpec.Projects[0].FilePath;
+            var parentPackageReferenceProject = CreateTestCpsPackageReferenceProject(parentProject, parentProjectFullPath, projectCache);
+
+            // Child project
+            var childProject = "parentProject";
+            var childDependencyGraphSpec = ProjectTestHelpers.GetDGSpecFromPackageSpecs(ProjectTestHelpers.GetPackageSpec(settings, childProject, rootPath: pathContext.SolutionRoot));
+            var childProjectFullPath = parentDependencyGraphSpec.Projects[0].FilePath;
+            var childPackageReferenceProject = CreateTestCpsPackageReferenceProject(childProject, childProjectFullPath, projectCache);
+
+            // Populate caches
+            AddProjectDetailsToCache(projectCache, parentDependencyGraphSpec, parentPackageReferenceProject, GetTestProjectNames(parentProjectFullPath, parentProject));
+            AddProjectDetailsToCache(projectCache, childDependencyGraphSpec, childPackageReferenceProject, GetTestProjectNames(childProjectFullPath, childProject));
+            testSolutionManager.NuGetProjects.Add(parentPackageReferenceProject);
+            testSolutionManager.NuGetProjects.Add(childPackageReferenceProject);
+
+            //  Setup expectations
+            var progressReporter = new Mock<IRestoreProgressReporter>(MockBehavior.Strict);
+            progressReporter.Setup(e => e.StartProjectUpdate(It.Is<string>(path => path == parentProjectFullPath), It.IsAny<IReadOnlyList<string>>())).Verifiable();
+            progressReporter.Setup(e => e.EndProjectUpdate(It.Is<string>(path => path == parentProjectFullPath), It.IsAny<IReadOnlyList<string>>())).Verifiable();
+            progressReporter.Setup(e => e.StartProjectUpdate(It.Is<string>(path => path == childProjectFullPath), It.IsAny<IReadOnlyList<string>>())).Verifiable();
+            progressReporter.Setup(e => e.EndProjectUpdate(It.Is<string>(path => path == childProjectFullPath), It.IsAny<IReadOnlyList<string>>())).Verifiable();
+
+            var nuGetPackageManager = new NuGetPackageManager(sourceRepositoryProvider, settings, testSolutionManager, new TestDeleteOnRestartManager(), progressReporter.Object);
+            var actions = await nuGetPackageManager.PreviewInstallPackageAsync(parentPackageReferenceProject, packageA.Id, new ResolutionContext(), new TestNuGetProjectContext(),
+                    sourceRepositoryProvider.GetRepositories(), sourceRepositoryProvider.GetRepositories(), CancellationToken.None);
+
+            // Preconditions
+            actions.Should().HaveCount(1);
+
+            // Act
+            await nuGetPackageManager.ExecuteNuGetProjectActionsAsync(
+                parentPackageReferenceProject,
+                actions,
+                new TestNuGetProjectContext(),
+                new SourceCacheContext(),
+                CancellationToken.None);
+
+            // Assert 
+            progressReporter.VerifyAll();
+        }
+
+        private static void AddProjectDetailsToCache(ProjectSystemCache projectCache, DependencyGraphSpec parentDependencyGraphSpec, TestCpsPackageReferenceProject parentPackageReferenceProject, ProjectNames parentProjectNames)
+        {
+            projectCache.AddProjectRestoreInfo(parentProjectNames, parentDependencyGraphSpec, new List<IAssetsLogMessage>());
+            projectCache.AddProject(parentProjectNames, vsProjectAdapter: (new Mock<IVsProjectAdapter>()).Object, parentPackageReferenceProject).Should().BeTrue();
+        }
+
         private TestCpsPackageReferenceProject CreateTestCpsPackageReferenceProject(string projectName, string projectFullPath, ProjectSystemCache projectSystemCache, TestProjectSystemServices projectServices = null)
         {
             projectServices = projectServices == null ? new TestProjectSystemServices() : projectServices;
@@ -3289,53 +3419,6 @@ namespace NuGet.PackageManagement.VisualStudio.Test
                     unconfiguredProject: null,
                     projectServices: projectServices,
                     projectId: projectName);
-        }
-
-        private CpsPackageReferenceProject CreateCpsPackageReferenceProject(string projectName, string projectFullPath, ProjectSystemCache projectSystemCache)
-        {
-            var projectServices = new TestProjectSystemServices();
-
-            return new CpsPackageReferenceProject(
-                    projectName: projectName,
-                    projectUniqueName: projectName,
-                    projectFullPath: projectFullPath,
-                    projectSystemCache: projectSystemCache,
-                    unconfiguredProject: null,
-                    projectServices: projectServices,
-                    projectId: projectName);
-        }
-
-        private ProjectNames GetTestProjectNames(string projectPath, string projectUniqueName)
-        {
-            var projectNames = new ProjectNames(
-            fullName: projectPath,
-            uniqueName: projectUniqueName,
-            shortName: projectUniqueName,
-            customUniqueName: projectUniqueName,
-            projectId: Guid.NewGuid().ToString());
-            return projectNames;
-        }
-
-        private static PackageSpec GetPackageSpec(string projectName, string testDirectory, string version)
-        {
-            string referenceSpec = $@"
-                {{
-                    ""frameworks"":
-                    {{
-                        ""net5.0"":
-                        {{
-                            ""dependencies"":
-                            {{
-                                ""packageA"":
-                                {{
-                                    ""version"": ""{version}"",
-                                    ""target"": ""Package""
-                                }},
-                            }}
-                        }}
-                    }}
-                }}";
-            return JsonPackageSpecReader.GetPackageSpec(referenceSpec, projectName, testDirectory).WithTestRestoreMetadata();
         }
 
         private static PackageSpec GetPackageSpecNoPackages(string projectName, string testDirectory)

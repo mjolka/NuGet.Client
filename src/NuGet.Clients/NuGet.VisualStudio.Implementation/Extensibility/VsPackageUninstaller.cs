@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Threading;
 using EnvDTE;
 using Microsoft.VisualStudio.Threading;
+using NuGet.Commands;
 using NuGet.Common;
 using NuGet.PackageManagement;
 using NuGet.PackageManagement.VisualStudio;
@@ -15,9 +16,10 @@ using NuGet.Packaging.PackageExtraction;
 using NuGet.Packaging.Signing;
 using NuGet.ProjectManagement;
 using NuGet.Protocol.Core.Types;
+using NuGet.VisualStudio.Etw;
 using NuGet.VisualStudio.Telemetry;
 
-namespace NuGet.VisualStudio
+namespace NuGet.VisualStudio.Implementation.Extensibility
 {
     [Export(typeof(IVsPackageUninstaller))]
     public class VsPackageUninstaller : IVsPackageUninstaller
@@ -27,6 +29,7 @@ namespace NuGet.VisualStudio
         private IVsSolutionManager _solutionManager;
         private IDeleteOnRestartManager _deleteOnRestartManager;
         private INuGetTelemetryProvider _telemetryProvider;
+        private readonly IRestoreProgressReporter _restoreProgressReporter;
 
         private JoinableTaskFactory PumpingJTF { get; }
 
@@ -36,7 +39,8 @@ namespace NuGet.VisualStudio
             Configuration.ISettings settings,
             IVsSolutionManager solutionManager,
             IDeleteOnRestartManager deleteOnRestartManager,
-            INuGetTelemetryProvider telemetryProvider)
+            INuGetTelemetryProvider telemetryProvider,
+            IRestoreProgressReporter restoreProgressReporter)
         {
             _sourceRepositoryProvider = sourceRepositoryProvider;
             _settings = settings;
@@ -45,10 +49,20 @@ namespace NuGet.VisualStudio
 
             PumpingJTF = new PumpingJTF(NuGetUIThreadHelper.JoinableTaskFactory);
             _deleteOnRestartManager = deleteOnRestartManager;
+            _restoreProgressReporter = restoreProgressReporter;
         }
 
         public void UninstallPackage(Project project, string packageId, bool removeDependencies)
         {
+            const string eventName = nameof(IVsPackageUninstaller) + "." + nameof(UninstallPackage);
+            using var _ = NuGetETW.ExtensibilityEventSource.StartStopEvent(eventName,
+                new
+                {
+                    // Can't add project information, since it's a COM object that this method might be called on a background thread
+                    PackageId = packageId,
+                    RemoveDependencies = removeDependencies
+                });
+
             if (project == null)
             {
                 throw new ArgumentNullException(nameof(project));
@@ -68,7 +82,8 @@ namespace NuGet.VisualStudio
                                _sourceRepositoryProvider,
                                _settings,
                                _solutionManager,
-                               _deleteOnRestartManager);
+                               _deleteOnRestartManager,
+                               _restoreProgressReporter);
 
                         var uninstallContext = new UninstallationContext(removeDependencies, forceRemove: false);
                         var projectContext = new VSAPIProjectContext
