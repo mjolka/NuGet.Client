@@ -1973,7 +1973,7 @@ namespace NuGet.Commands.Test
                     var summaries = await RestoreRunner.RunAsync(restoreContext);
                     var summary = summaries.Single();
 
-                    var assetsFilePath = Path.Combine(pathContext.SolutionRoot, projectName, assetsFileName);
+                    var assetsFilePath = Path.Combine(spec.BaseDirectory, assetsFileName);
 
                     Assert.True(summary.Success);
                     Assert.True(File.Exists(assetsFilePath), assetsFilePath);
