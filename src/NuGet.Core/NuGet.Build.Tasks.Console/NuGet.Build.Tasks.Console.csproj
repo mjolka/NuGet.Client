@@ -23,11 +23,11 @@
     <TargetFrameworks />
     <TargetFramework>$(NETFXTargetFramework)</TargetFramework>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <ProjectReference Include="..\NuGet.Build.Tasks\NuGet.Build.Tasks.csproj" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Build.Framework" ExcludeAssets="Runtime" />
     <PackageReference Include="Microsoft.Build" ExcludeAssets="Runtime" />
