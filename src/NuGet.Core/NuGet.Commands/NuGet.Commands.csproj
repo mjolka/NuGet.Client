@@ -29,6 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="$(NuGetCoreSrcDirectory)NuGet.Credentials\NuGet.Credentials.csproj" />
     <ProjectReference Include="$(NuGetCoreSrcDirectory)NuGet.ProjectModel\NuGet.ProjectModel.csproj" />
+    <ProjectReference Include="..\NuGet.DependencyResolver.CoreV2\NuGet.DependencyResolver.CoreV2.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == '$(NETFXTargetFramework)' ">

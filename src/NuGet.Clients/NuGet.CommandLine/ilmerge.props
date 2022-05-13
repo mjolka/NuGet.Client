@@ -9,6 +9,7 @@
     <MergeInclude Include="$(OutputPath)NuGet.Configuration.dll"/>
     <MergeInclude Include="$(OutputPath)NuGet.Credentials.dll"/>
     <MergeInclude Include="$(OutputPath)NuGet.DependencyResolver.Core.dll"/>
+    <MergeInclude Include="$(OutputPath)NuGet.DependencyResolver.CoreV2.dll"/>
     <MergeInclude Include="$(OutputPath)NuGet.Frameworks.dll"/>
     <MergeInclude Include="$(OutputPath)NuGet.LibraryModel.dll"/>
     <MergeInclude Include="$(OutputPath)NuGet.PackageManagement.dll"/>

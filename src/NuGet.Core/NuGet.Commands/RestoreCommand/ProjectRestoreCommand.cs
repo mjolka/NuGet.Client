@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -257,6 +258,9 @@ namespace NuGet.Commands
             token.ThrowIfCancellationRequested();
 
             var name = FrameworkRuntimePair.GetTargetGraphName(framework, runtimeIdentifier);
+
+            var first = Stopwatch.StartNew();
+
             var graphs = new List<GraphNode<RemoteResolveResult>>
             {
                 await walker.WalkAsync(
@@ -266,6 +270,36 @@ namespace NuGet.Commands
                 runtimeGraph,
                 recursive: true)
             };
+
+            first.Stop();
+
+            var walkerV2 = new NuGet.DependencyResolverV2.RemoteDependencyWalker(context);
+
+            var second = Stopwatch.StartNew();
+
+            var walkResult = await walkerV2.WalkAsync(
+                projectRange,
+                framework,
+                runtimeIdentifier,
+                runtimeGraph,
+                recursive: true);
+
+            second.Stop();
+
+            var eq = walkResult.Equals(graphs[0]);
+
+            var third = Stopwatch.StartNew();
+
+            await walker.WalkAsync(
+                projectRange,
+                framework,
+                runtimeIdentifier,
+                runtimeGraph,
+                recursive: true);
+
+            third.Stop();
+
+            await _logger.LogAsync(LogLevel.Information, $">>> TIMINGS {first.Elapsed} {second.Elapsed} {third.Elapsed}");
 
             // Resolve conflicts
             await _logger.LogAsync(LogLevel.Verbose, string.Format(CultureInfo.CurrentCulture, Strings.Log_ResolvingConflicts, name));
