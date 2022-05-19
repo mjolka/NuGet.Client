@@ -221,7 +221,7 @@ namespace NuGet.DependencyResolverV2
                 var item = this[e.LibraryRange];
                 if (rejectedItems.Contains(item))
                 {
-                    return true;
+                    return false;
                 }
 
                 if (acceptedItems.ContainsKey(item.Key.Name))
