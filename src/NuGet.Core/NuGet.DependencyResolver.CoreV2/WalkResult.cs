@@ -38,22 +38,52 @@ namespace NuGet.DependencyResolverV2
         {
             var result = new AnalyzeResult();
 
+            var acceptedItems = new Dictionary<string, List<LibraryDependency>>(StringComparer.OrdinalIgnoreCase);
+
             CheckCycleAndNearestWins(result.Downgrades, result.Cycles);
-            TryResolveConflicts(result.VersionConflicts);
+            TryResolveConflicts(result.VersionConflicts, acceptedItems);
 
             // Remove all downgrades that didn't result in selecting the node we actually downgraded to
-            result.Downgrades.RemoveAll(d => !IsRelevantDowngrade(d));
+            result.Downgrades.RemoveAll(d => !IsRelevantDowngrade(d, acceptedItems));
 
             return result;
         }
 
-        private bool IsRelevantDowngrade(DowngradeResult downgradeResult)
+        /// <summary>
+        /// A downgrade is relevant if the node itself was `Accepted`.
+        /// A node that itself wasn't `Accepted`, or has a parent that wasn't accepted is not relevant.
+        /// </summary>
+        private bool IsRelevantDowngrade(
+            DowngradeResult downgradeResult,
+            Dictionary<string, List<LibraryDependency>> acceptedItems)
         {
-            // TODO
-            return true;
+            return IsAccepted(downgradeResult.DowngradedTo[0], acceptedItems) && AreAllParentsAccepted();
+
+            bool AreAllParentsAccepted()
+            {
+                var downgradedFrom = downgradeResult.DowngradedFrom;
+
+                for (var i = 1; i < downgradedFrom.Count; i++)
+                {
+                    if (!IsAccepted(downgradedFrom[i], acceptedItems))
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
         }
 
-        private bool TryResolveConflicts(List<VersionConflictResult> versionConflicts)
+        private bool IsAccepted(LibraryDependency dependency, Dictionary<string, List<LibraryDependency>> acceptedItems)
+        {
+            var item = _items[dependency.LibraryRange];
+
+            return acceptedItems.TryGetValue(item.Key.Name, out var acceptedPath) &&
+                   item.Equals(_items[acceptedPath[0].LibraryRange]);
+        }
+
+        private bool TryResolveConflicts(List<VersionConflictResult> versionConflicts, Dictionary<string, List<LibraryDependency>> acceptedItems)
         {
             // TODO: Recursive?
             var walker = new DepthFirstDependencyWalker(_runtimeName, _runtimeGraph, recursive: true);
@@ -66,7 +96,6 @@ namespace NuGet.DependencyResolverV2
             var incomplete = true;
 
             var rejectedItems = new HashSet<GraphItem<RemoteResolveResult>>();
-            var acceptedItems = new Dictionary<string, List<LibraryDependency>>(StringComparer.OrdinalIgnoreCase);
 
             while (incomplete && --patience != 0)
             {
@@ -221,9 +250,7 @@ namespace NuGet.DependencyResolverV2
 
                 // Check if the parent was accepted
                 var parentDependency = walker.Path.Peek();
-                var parent = _items[parentDependency.LibraryRange];
-                if (acceptedItems.TryGetValue(parent.Key.Name, out var acceptedParentItem) &&
-                    parent.Equals(_items[acceptedParentItem[0].LibraryRange]))
+                if (IsAccepted(parentDependency, acceptedItems))
                 {
                     var item = _items[e.LibraryRange];
                     if (acceptedItems.TryGetValue(e.Name, out var acceptedItemPath) &&
