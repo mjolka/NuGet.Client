@@ -44,6 +44,7 @@ namespace NuGet.Protocol
             // replace the handler with the proxy aware handler
             var clientHandler = new HttpClientHandler
             {
+                MaxConnectionsPerServer = 20,
                 Proxy = proxy,
                 AutomaticDecompression = (DecompressionMethods.GZip | DecompressionMethods.Deflate)
             };

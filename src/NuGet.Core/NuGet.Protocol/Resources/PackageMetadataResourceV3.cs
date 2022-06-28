@@ -103,6 +103,7 @@ namespace NuGet.Protocol
             }
 
             var results = new List<PackageSearchMetadataRegistration>();
+            var tasks = new List<Task<RegistrationPage>>();
 
             foreach (var registrationPage in registrationIndex.Items)
             {
@@ -119,20 +120,24 @@ namespace NuGet.Protocol
                     if (registrationPage.Items == null)
                     {
                         var rangeUri = registrationPage.Url;
-                        var leafRegistrationPage = await GetRegistratioIndexPageAsync(_client, rangeUri, packageId, lower, upper, httpSourceCacheContext, log, token);
-
-                        if (registrationPage == null)
-                        {
-                            throw new InvalidDataException(registrationUri.AbsoluteUri);
-                        }
-
-                        ProcessRegistrationPage(leafRegistrationPage, results, range, includePrerelease, includeUnlisted, metadataCache);
+                        var task = GetRegistratioIndexPageAsync(_client, rangeUri, packageId, lower, upper, httpSourceCacheContext, log, token);
+                        tasks.Add(task);
                     }
                     else
                     {
-                        ProcessRegistrationPage(registrationPage, results, range, includePrerelease, includeUnlisted, metadataCache);
+                        tasks.Add(Task.FromResult(registrationPage));
                     }
                 }
+            }
+
+            foreach (var registrationPage in await Task.WhenAll(tasks))
+            {
+                if (registrationPage == null)
+                {
+                    throw new InvalidDataException(registrationUri.AbsoluteUri);
+                }
+
+                ProcessRegistrationPage(registrationPage, results, range, includePrerelease, includeUnlisted, metadataCache);
             }
 
             return results;
